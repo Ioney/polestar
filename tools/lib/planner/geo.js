@@ -5,22 +5,8 @@
 // map-frames.json `era`) or the live one (anything else, `forever`), and the
 // renderer's plane X = -wy, Y = -wx (east right, north up). A map without a
 // frame in the asked set uses the other set's.
-//
-// ADT tiles: tile (col, row) (the client's map<col>_<row>.blp) covers
-// X in [(col - 32) * ADT, (col - 31) * ADT], Y in [(row - 32) * ADT, (row - 31) * ADT].
 
 const { Frames } = require('../travel/geo');
-
-const ADT = 1600 / 3;
-
-// The ADT tile holding a world point.
-function adtOf(wx, wy) {
-	return { col: Math.floor(32 - wy / ADT), row: Math.floor(32 - wx / ADT) };
-}
-
-function toPlane(wx, wy) {
-	return { X: -wy, Y: -wx };
-}
 
 const area = (b) => Math.abs((b.right - b.left) * (b.bottom - b.top));
 
@@ -92,4 +78,4 @@ class Geo {
 	}
 }
 
-module.exports = { Geo, ADT, adtOf, toPlane };
+module.exports = { Geo };

@@ -570,5 +570,5 @@ function generate(addonRoot) {
 
 // GLYPHS (24-unit shapes in SIZE-pixel space), emblemShape, band and
 // bandStars are also read by the route planner, which renders the same art
-// at its own sizes for the browser (tools/planner/icons.js).
+// at its own sizes for the browser (tools/planner/glyphs.js).
 module.exports = { name: 'ui', generate, GLYPHS, SIZE, emblemShape, band, bandStars };

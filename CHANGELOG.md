@@ -30,15 +30,18 @@
   along the way the flight master actually flies, boats, zeppelins and the
   tram as solid lines, each in its kind's colour; the leg you are on is
   strong and the legs after it fainter, and the dots stop short of each stop.
-  Gates, bridges, caves, lifts and passes the route passes through get their
-  own marks. Options, Arrow & routes, "Route lines" (on by default); the old
+  Every stop along the way is marked: a lift with its own glyph, zone
+  crossings, approach chains and the guide's go-to points with a plain disc;
+  gates, bridges, caves and passes get their own marks once the walking maps
+  carry them. Options, Arrow & routes, "Route lines" (on by default); the old
   trail dots stand in while it is off.
 - When the route says to hearth or teleport, a button under the arrow casts
   it (bindable: "Use the route's Hearthstone or teleport"); it appears,
   moves and hides only out of combat. Right-click the arrow, or
-  `/polestar skipleg`, to mark a leg done; on a Hearthstone leg the rest of
-  the trip is planned without it. As in Shortest Path Forever. Options,
-  Arrow & routes, "Travel button".
+  `/polestar skipleg`, to skip a leg: "Skip this leg" on a Hearthstone,
+  teleport, flight, ride or portal plans the rest of the trip without it;
+  "Mark this leg done" on a walk or a lift moves on to the next leg. As in
+  Shortest Path Forever. Options, Arrow & routes, "Travel button".
 - Transport alerts: 30 seconds before your boat, zeppelin or tram comes in
   while you wait at the dock, and 20 before the next stop on board, a small
   banner with a countdown, the transport's own sound (the ship's bell, the
@@ -189,9 +192,12 @@
   arrow is on is searched (`Path.Find`, cancelled on a new goal, asked again
   25 yd off the path, never in combat), hand-made walks (crossings, chains,
   a goal after a guide `goto`) stay straight, and every failure falls back
-  to the straight arrow; it splits that walk at Polestar_Nav's chokepoints
-  (`Travel.SplitWalk`: pieces with `step`, `choke`, lift rides of kind
-  `lift`) and publishes `Nav.GetRouteGeometry()`. `Travel.lua` plans
+  to the straight arrow; it splits that walk at the lifts `Nav/Transit.lua`
+  knows (crossings, approach chains and guide gotos are legs already; gates,
+  bridges, caves and passes follow once Polestar_Nav carries
+  `PolestarNavChokepoints`) (`Travel.SplitWalk`: pieces with `step`,
+  `choke`, lift rides of kind `lift`) and publishes
+  `Nav.GetRouteGeometry()`. `Travel.lua` plans
   timetabled waits (from when the player reaches the dock), class
   teleports, one-way portals and walk-only ghost routes, adds `yards`,
   `stops`, `item`/`spell`, `Travel.SkipLeg()` and `Travel.Progress()`; option

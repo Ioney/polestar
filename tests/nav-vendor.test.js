@@ -167,6 +167,15 @@ test('security L12 / review P3-15: the LICENSE shipped in Polestar/ names Cillia
 	}
 });
 
+test('second review L13b: timetable.js keeps the CMaNGOS notice it ports under, and the root LICENSE names it', () => {
+	const notice = 'Portions Copyright (C) the CMaNGOS project (see its AUTHORS file), GPL-2.0-or-later, used under GPL-3.0.';
+	const src = fs.readFileSync(path.join(ROOT, 'tools', 'lib', 'travel', 'timetable.js'), 'utf8');
+	assert.ok(src.split('\n').slice(0, 12).includes(`// ${notice}`), 'in the header, next to the Shortest Path Forever line');
+	const license = fs.readFileSync(path.join(ROOT, 'LICENSE'), 'utf8');
+	const para = license.slice(license.indexOf('Portions Copyright (C) the CMaNGOS project'), license.indexOf('-----')).replace(/\s+/g, ' ');
+	assert.match(para, /^Portions Copyright \(C\) the CMaNGOS project .*version 2 or \(at your option\) any later version, and used under version 3: .*tools\/lib\/travel\/timetable\.js/);
+});
+
 // Lua: Polestar_Nav's files, the TOC order, as the client loads them.
 const NAV_FILES = xmlFiles(path.join(NAV, 'Nav', 'Nav.xml'));
 const GOLDSHIRE = '{ x = -9444.062, y = 77.667, z = 57.353 }';

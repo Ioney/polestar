@@ -24,6 +24,12 @@ timetable.js and tools/lib/travel/cmangos.js. The Polestar_Nav folder is his
 walking router and maps, with its own LICENSE and CREDITS.md. Each of these
 files names what it took from Shortest Path Forever at its top.
 
+Portions Copyright (C) the CMaNGOS project (https://github.com/cmangos, see
+its AUTHORS file), licensed under the GNU General Public License, version 2
+or (at your option) any later version, and used under version 3: in the
+repository's tools, tools/lib/travel/timetable.js ports mangos-classic's
+transport model (TransportMgr::GenerateWaypoints).
+
 World of Warcraft and Blizzard Entertainment are trademarks or registered
 trademarks of Blizzard Entertainment, Inc. Polestar is not affiliated with or
 endorsed by Blizzard Entertainment.

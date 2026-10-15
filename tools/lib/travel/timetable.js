@@ -7,6 +7,7 @@
 // used with permission): tools/gen_routes.py (the boat model) and
 // tools/gen_transit.py (lifts, tram, portals, teleports).
 // Portions Copyright (C) 2026 Cillian Berragan (Shortest Path Forever, GPL-3.0-or-later); adapted for Polestar, 2026-10-15.
+// Portions Copyright (C) the CMaNGOS project (see its AUTHORS file), GPL-2.0-or-later, used under GPL-3.0.
 //
 // Boats and zeppelins run the server's own transport model: CMaNGOS
 // mangos-classic TransportMgr::GenerateWaypoints (Catmull-Rom spline lengths,

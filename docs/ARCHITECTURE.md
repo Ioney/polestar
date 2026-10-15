@@ -1149,17 +1149,18 @@ dropped when the guide's step changes.
 ```lua
 -- Public, for other addons. Points: a uiMapID and x, y as 0-1 fractions (as TomTom and C_Map).
 Polestar.Nav.API.version                      -- 1
-Polestar.Nav.API.Estimate(fromMap, fromX, fromY, toMap, toX, toY) -> seconds | nil, "invalid" | "unknown"
+Polestar.Nav.API.Estimate(fromMap, fromX, fromY, toMap, toX, toY) -> seconds | nil, "invalid" | "unknown" | "busy"
     -- the travel planner's estimate (Nav.EstimateTravel: flights, boats, timetables, cached a few
     -- seconds per start cell and destination), else a straight run on one continent; fromMap nil:
     -- from the player, the Hearthstone counted. An uncached call runs a full route plan
-    -- (up to its 40 ms budget): ask for at most one new estimate per frame
+    -- (up to its 40 ms cap). Once a frame has spent 25 ms planning estimates (Polestar's own
+    -- included) no new plan starts for the API and the answer is nil, "busy": ask again next frame
 Polestar.Nav.API.Navigate(owner, map, x, y, title) -> true | false   -- owner: a non-empty string
 Polestar.Nav.API.Cancel(owner) -> true | false  -- that owner's target, while it is the one shown, lets go
 Polestar.Nav.API.Active() -> active, owner      -- anything guided to; owner while an API caller's target shows
 -- Internal
 Polestar.Nav.journey.PlanTo(map, x, y, label, f) -> ok   -- onto the zone under a continent spot; refuses open sea
-Polestar.Nav.journey.Estimate(from, to) -> seconds | nil -- from, to = { map, x, y, f } (percent); from nil: the player
+Polestar.Nav.journey.Estimate(from, to, budgeted) -> seconds | nil[, "busy"] -- from, to = { map, x, y, f } (percent); from nil: the player; "busy" only when budgeted (the API)
 Polestar.Nav.nearby.Find(kind, skillLine) -> place, seconds | nil, "kind" | "codex" | "combat" | "none"
 Polestar.Nav.nearby.Go(kind, skillLine) -> ok
 Polestar.Pins.MinimapCursor() -> dNorth, dWest | nil      -- yards from the player to the cursor on the minimap
@@ -1342,11 +1343,13 @@ permission; `addon/Polestar_Nav/CREDITS.md`).
 ```lua
 Polestar.Nav.PlanRoute(p) -> legs | nil, reason   -- pure; Nav/Travel.lua
 Polestar.Nav.GetRoute() -> legs, ci               -- the live route and its current leg
-Polestar.Nav.EstimateTravel(from, to) -> seconds | nil[, "busy"] -- same planner, cached; 25 ms of planning a frame
+Polestar.Nav.EstimateTravel(from, to, budgeted) -> seconds | nil[, "busy"] -- same planner, cached; budgeted (the API's): no new plan past 25 ms a frame
 Polestar.Nav.RegisterTravelData(d, replace)        -- TravelData.lua: flight masters, flights, transports, portals, inns
 Polestar.Nav.AddTravelPaths(chunk)                 -- learned walking paths (nodes: c, wx, wy, gateway, uiMap)
 Polestar.Nav.RegisterCrossings(d)                  -- zone crossings (merges; ids seen before are skipped)
 Polestar.Nav.travel.SkipLeg() -> bool              -- leave this hearth/teleport/flight/ride out for the target; else the next leg
+Polestar.Nav.travel.SkipReplans(leg) -> bool      -- skipping it replans (the prompts' "Skip this leg"), else "Mark this leg done"
+Polestar.Nav.travel.RestoreWalk(c, x, y) -> bool  -- the path to (c, x, y) failed or was cleared: the walk's straight estimate again
 Polestar.Nav.travel.Progress() -> seconds, yards   -- the current leg's rest (allocation-free, always finite; rides count down)
 Polestar.Nav.GetRouteGeometry() -> { legs = { { kind, pts = { { c, wx, wy }, ... }, current, choke }, ... } } | nil
 -- leg = { kind = "walk"|"fly"|"boat"|"zeppelin"|"tram"|"portal"|"hearth"|"teleport"|"lift", from, to, label,
@@ -1383,10 +1386,16 @@ player only when a leg from the current one on uses a changed service
 teleport spell, flight (its departure flight master), ride or portal out of
 every plan for this target (another target may use it again) and plans
 again; a walk or lift step just moves on. `Progress` counts a ride, flight,
-hearth or teleport down from when it became current. `EstimateTravel`
-evicts its oldest cached answer when 64 are held and plans at most 25 ms a
-frame (`debugprofilestop`); past that it answers `nil, "busy"` until the
-next frame. The arrow's ETA adds the 1.25 detour only to straight distances
+hearth or teleport down from when it became current (a flight from take-off,
+when the player is first on the taxi); `Remaining`, the arrow's ETA on those
+legs, counts down the same way. `EstimateTravel`
+evicts its oldest cached answer when 64 are held. A budgeted call (only
+`API.Estimate`'s) starts no new plan once the frame has spent 25 ms planning
+estimates (`debugprofilestop`) and answers `nil, "busy"` until the next
+frame; the plan it does start may still run to its 40 ms cap. Polestar's own
+callers (`ns.TravelCost`, `Nearby.Rank`, the item sources, the dungeon
+pickup order) are never refused, so a ranking compares full plans only; their
+own caps and the cache bound them. The arrow's ETA adds the 1.25 detour only to straight distances
 (`Nav.Sample`'s sixth value `measured` is true along a path).
 
 **Walking paths.** `Nav/Walk.lua` lets the arrow follow real paths on the
@@ -1446,7 +1455,15 @@ yards after it): the arrow keeps following the one path to the whole walk's
 end and moves to the next piece within its radius or once past its segment.
 The split runs once per path (`Travel.SplitWalk`, `ROUTE_CHANGED`) and again
 after a fresh plan of the same walk from the path already in, so the steps
-stay the same as the player walks (K2).
+stay the same as the player walks (K2). A walk with no stops on its path
+stays one leg and takes the path's measure: `yards` the path from the
+player to its end, `seconds` that at run speed (the planner's pace), its
+straight estimate kept in `straightYards`/`straightSeconds`; `ROUTE_CHANGED`
+fires as for a split, so the journey's legs, `Progress`, `Remaining` and the
+panel header agree. When that path's search fails or the path is cleared
+(`Walk.Clear`: no target, `nav.navRouting` off, a hand-made leg),
+`Travel.RestoreWalk(c, x, y)` puts the straight estimate back. Split pieces
+keep their path times.
 
 **Zone crossings.** Without crossing data a continent walks as it always
 did: straight lines between any two points on it (x1.25 detour) plus learned

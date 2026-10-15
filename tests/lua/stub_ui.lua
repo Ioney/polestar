@@ -621,6 +621,13 @@ function Compat.GetPlayerInfo() return uistub.player end
 function Compat.GetMapName(id) return MAPS[id] end
 function Compat.GetQuestTitle() return nil end
 function Compat.InCombat() return stub.inCombat end
+-- The world map opener: a scene's global OpenWorldMap stands in for the client's.
+function Compat.CanOpenWorldMap() return OpenWorldMap ~= nil end
+function Compat.OpenWorldMap(map)
+	if not OpenWorldMap or stub.inCombat then return false end
+	OpenWorldMap(map)
+	return true
+end
 
 -- opts: noNav (no Nav module), noTabs (an Engine without the tabs API).
 function uistub.install(opts)

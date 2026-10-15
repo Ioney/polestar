@@ -232,3 +232,52 @@ test('secret unit values read as unknown instead of throwing', () => {
 	`);
 	assert.deepEqual(out, { npc: false, target: 197, faction: 'Neutral', race: 'Human' });
 });
+
+test('C3 (spf-issues): the world map opens through C_Map.OpenWorldMap when the client has it, the global opener only as a fallback, never in combat', () => {
+	const [out] = run(`
+		local calls = {}
+		OpenWorldMap = function(map) calls[#calls + 1] = "global " .. tostring(map) end
+		C_Map.OpenWorldMap = function(map) calls[#calls + 1] = "C_Map " .. tostring(map) end
+		local both = { C.CanOpenWorldMap(), C.OpenWorldMap(1429) }
+		stub.inCombat = true
+		local combat = C.OpenWorldMap(1429)
+		stub.inCombat = false
+		C_Map.OpenWorldMap = nil
+		local fallback = C.OpenWorldMap(1411)
+		OpenWorldMap = nil
+		local none = { C.CanOpenWorldMap(), C.OpenWorldMap(1411) }
+		C_Map.OpenWorldMap = function() error("blocked") end
+		local failed = C.OpenWorldMap(1429)
+		emit({ both = both, combat = combat, fallback = fallback, none = none, failed = failed, calls = table.concat(calls, ";") })
+	`);
+	assert.deepEqual(out.both, [true, true]);
+	assert.equal(out.combat, false, 'nothing opens in combat');
+	assert.equal(out.fallback, true);
+	assert.deepEqual(out.none, [false, false]);
+	assert.equal(out.failed, false, 'an opener that errors is reported, not thrown');
+	assert.equal(out.calls, 'C_Map 1429;global 1411', 'C_Map first; the global only without it');
+});
+
+test('C3 (spf-issues): no addon code outside Core/Compat.lua opens or moves the world map itself (OpenWorldMap, ToggleWorldMap, ShowUIPanel(WorldMapFrame), WorldMapFrame:SetMapID)', () => {
+	const fs = require('node:fs');
+	const path = require('node:path');
+	const { ADDONS } = require('./helpers/lua');
+	const BARE = [/(^|[^.:\w])OpenWorldMap\b/, /(^|[^.:\w])ToggleWorldMap\s*\(/, /ShowUIPanel\s*\(\s*WorldMapFrame\b/, /WorldMapFrame\s*:\s*SetMapID\s*\(/];
+	const found = [];
+	const walk = (dir) => {
+		for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+			const p = path.join(dir, e.name);
+			if (e.isDirectory()) walk(p);
+			else if (e.name.endsWith('.lua') && path.relative(ADDONS, p) !== path.join('Polestar', 'Core', 'Compat.lua')) {
+				fs.readFileSync(p, 'utf8')
+					.split('\n')
+					.forEach((line, i) => {
+						const code = line.replace(/--.*$/, '');
+						if (BARE.some((re) => re.test(code))) found.push(`${path.relative(ADDONS, p)}:${i + 1}`);
+					});
+			}
+		}
+	};
+	walk(ADDONS);
+	assert.deepEqual(found, []);
+});

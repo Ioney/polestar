@@ -1083,7 +1083,7 @@ local function pageHeader(d)
 	pg.PickupNone:SetShown(none)
 	pg.Go:SetShown(go and lead == "go")
 	pg.GoQuiet:SetShown(go and lead ~= "go")
-	pg.MapBtn:SetShown(e ~= nil and OpenWorldMap ~= nil)
+	pg.MapBtn:SetShown(e ~= nil and ns.Compat.CanOpenWorldMap())
 	-- In priority order; three at most, so the facts keep their room (the
 	-- Map tab shows the entrance too).
 	local order = lead == "handin" and { pg.HandIn, pg.PickupQuiet, pg.GoQuiet, pg.MapBtn }
@@ -2047,9 +2047,16 @@ function DS.Attune(id)
 	end, page, function() return L["Nothing is left to do for it."] end)
 end
 
+-- In combat the map stays shut (Compat.OpenWorldMap: opening it then is
+-- blocked); the chat says so instead of the button doing nothing (review P3-13).
 function DS.ShowOnMap()
 	local Dg = D()
-	if page and Dg then Dg.ShowOnMap(page) end
+	if not (page and Dg) then return end
+	if ns.Compat.InCombat() then
+		ns.Print(L["The map can't open in combat: press Show on map again when it ends."])
+		return
+	end
+	Dg.ShowOnMap(page)
 end
 
 function DS.Search(text)

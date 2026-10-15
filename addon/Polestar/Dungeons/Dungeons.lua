@@ -229,10 +229,12 @@ function Dungeons.GuideTo(key)
 	return Dungeons.GuideToPoint(d.entrance, d.name)
 end
 
+-- Through Compat.OpenWorldMap: the client's C_Map opener, never in combat
+-- (the global OpenWorldMap taints the map: spf-issues C3).
 function Dungeons.ShowOnMap(key)
 	local map = Dungeons.Entrance(key)
-	if not (map and OpenWorldMap) then return false end
-	return pcall(OpenWorldMap, map) and true or false
+	if not map then return false end
+	return ns.Compat.OpenWorldMap(map)
 end
 
 ns.RegisterCommand("dungeons", function(rest)

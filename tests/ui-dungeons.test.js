@@ -438,3 +438,22 @@ test('Without the Codex pack: an empty state that says where to get the release;
 	assert.equal(out.band, true);
 	assert.ok(out.segs.every((s) => s[1] === false), 'the faction filter goes with the section');
 });
+
+test('review P3-13: "Show on map" in combat says in chat why the map stays shut, and opens it once combat is over', () => {
+	const [out] = run(`
+		local printed = {}
+		Polestar.Print = function(...) printed[#printed + 1] = table.concat({ ... }, " ") end
+		uistub.worldMap = nil
+		Polestar.Dungeons.Open("wailing-caverns")
+		local _, _, pg = DS.Frames()
+		stub.inCombat = true
+		pg.MapBtn:Click()
+		local inCombat = { map = uistub.worldMap or false, printed = printed[1] or false }
+		stub.inCombat = false
+		pg.MapBtn:Click()
+		emit({ inCombat = inCombat, after = uistub.worldMap or false, lines = #printed })`);
+	assert.equal(out.inCombat.map, false, 'nothing opens in combat');
+	assert.match(out.inCombat.printed, /map can't open in combat/);
+	assert.equal(out.after, 1413);
+	assert.equal(out.lines, 1, 'the out-of-combat click prints nothing');
+});

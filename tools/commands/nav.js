@@ -1,6 +1,6 @@
 'use strict';
 // `node tools/polestar.js nav`: terrain navigation from the Forever client's
-// own geometry (docs/superpowers/specs/2026-10-15-terrain-navigation-design.md).
+// own geometry (docs/ARCHITECTURE.md, "Navigation grid").
 // `nav build` builds the grid under data/local/nav (tools/lib/nav/grid);
 // `nav path` routes between two map points on it (tools/lib/nav/path.js);
 // `nav aids` generates the arrow's crossings, open borders and approach

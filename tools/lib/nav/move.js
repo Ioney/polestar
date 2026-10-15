@@ -1,6 +1,6 @@
 'use strict';
 // Movement profiles, speeds and costs for routes on the navigation grid
-// (docs/superpowers/specs/2026-10-15-terrain-navigation-design.md, "Movement").
+// (docs/ARCHITECTURE.md, "Navigation grid").
 // Values checked 2026-10-15:
 //
 // - Run 7.0 yd/s, swim 4.722222 yd/s: cMaNGOS mangos-classic

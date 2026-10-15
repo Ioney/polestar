@@ -1,6 +1,6 @@
 'use strict';
 // The .guide source model and its edit operations
-// (docs/superpowers/specs/2026-10-14-route-planner-design.md, section 4).
+// (docs/ARCHITECTURE.md, "Route planner").
 //
 // model(text, file) -> { ok, diagnostics, coords: 'era'|'live', header: { <key>: { line, raw, value } }
 //                        (pro/con: arrays of those), steps: [Step] }

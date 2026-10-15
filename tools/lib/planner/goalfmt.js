@@ -1,6 +1,6 @@
 'use strict';
 // Goal fields <-> goal line text, and the verb schema the planner's goal
-// editor is built from (docs/superpowers/specs/2026-10-14-route-planner-design.md, section 4).
+// editor is built from (docs/ARCHITECTURE.md, "Route planner").
 //
 // goalFields(goal)              -> fields: the parse output (tools/lib/dsl/parse.js) minus
 //                                  `line`/`zone`, `only` replaced by `onlyText` (the condition list as written)

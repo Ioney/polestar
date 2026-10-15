@@ -1,6 +1,5 @@
 'use strict';
-// Client geometry per ADT tile (docs/superpowers/specs/2026-10-15-terrain-
-// navigation-design.md, part 1a): terrain triangles, area ids and liquids
+// Client geometry per ADT tile (docs/ARCHITECTURE.md, "Navigation grid"): terrain triangles, area ids and liquids
 // from the root ADT, WMO and M2 collision and WMO liquids from the obj0
 // placements, all in world yards (wx north, wy west, z up).
 //

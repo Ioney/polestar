@@ -2,8 +2,7 @@
 // `planner art`: the planner's local map art from the Forever client's files
 // (wago.tools, cached), written under data/local/planner/art/:
 //
-//   index.json                       what exists (spec: docs/superpowers/specs/
-//                                    2026-10-14-route-planner-design.md, section 2)
+//   index.json                       what exists (spec: docs/ARCHITECTURE.md, "Route planner")
 //   tiles/<c>/<L>/<tx>_<ty>.bc1.gz   terrain pyramid: gzip of BC1 512 x 512 + mips to 4 x 4
 //   zones/<uiMapID>.png              each zone's painted world map, every overlay drawn
 //                                    (UiMap types 3 zone and 6 orphan: Forever's

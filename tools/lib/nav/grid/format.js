@@ -1,6 +1,6 @@
 'use strict';
 // The navigation grid's constants and its files under data/local/nav/
-// (docs/superpowers/specs/2026-10-15-terrain-navigation-design.md, part 1b).
+// (docs/ARCHITECTURE.md, "Navigation grid").
 //
 //   index.json                        schema, product, build, builtAt, constants (every value
 //                                     below), continents: { [c]: { name, tiles: ['col_row'],

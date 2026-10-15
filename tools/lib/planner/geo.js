@@ -1,5 +1,5 @@
 'use strict';
-// The planner's coordinates (docs/superpowers/specs/2026-10-14-route-planner-design.md §1):
+// The planner's coordinates (docs/ARCHITECTURE.md, "Route planner"):
 // world { c, wx, wy } in yards (wx north, wy west, the client's convention),
 // map percent { map, x, y, f } on a uiMapID in the Era frame (f 'e',
 // map-frames.json `era`) or the live one (anything else, `forever`), and the

@@ -1,6 +1,6 @@
 'use strict';
 // The arrow's aids from the navigation grid
-// (docs/superpowers/specs/2026-10-15-terrain-navigation-design.md, part 3):
+// (docs/ARCHITECTURE.md, "Navigation grid"):
 // zone crossings, open borders and approach chains in the crossings schema
 // (tools/lib/travel/crossings.js), generated from the grid's walkable
 // surfaces, links and chunk area ids. No place is known by name: every

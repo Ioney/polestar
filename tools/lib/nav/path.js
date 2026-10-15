@@ -1,5 +1,5 @@
 'use strict';
-// Routes on the navigation grid (docs/superpowers/specs/2026-10-15-terrain-navigation-design.md, 1b).
+// Routes on the navigation grid (docs/ARCHITECTURE.md, "Navigation grid").
 //
 //   const { openNav } = require('tools/lib/nav/path');
 //   const { profileFor } = require('tools/lib/nav/move');

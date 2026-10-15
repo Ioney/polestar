@@ -1,7 +1,7 @@
 'use strict';
 // The planner's workspace: the guide packs it edits, their .guide sources,
 // compiled guides, timelines, edits with undo/redo, the full lint and the
-// file watch (docs/superpowers/specs/2026-10-14-route-planner-design.md §5).
+// file watch (docs/ARCHITECTURE.md, "Route planner").
 // The .guide files stay the only source of truth: every edit is written at
 // once, and an external change (an editor, git) is read back and pushed.
 //

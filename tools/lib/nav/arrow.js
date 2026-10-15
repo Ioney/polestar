@@ -1,6 +1,6 @@
 'use strict';
 // The arrow measured on the navigation grid
-// (docs/superpowers/specs/2026-10-15-terrain-navigation-design.md, part 3):
+// (docs/ARCHITECTURE.md, "Navigation grid"):
 // the addon's own planner (Nav/Travel.lua PlanRoute, loaded as
 // tools/lib/travel/route.js does) run for many routes in one Lua process,
 // and the report `nav aids --report` writes from it.

@@ -1,6 +1,6 @@
 'use strict';
-// The planner's terrain routes (docs/superpowers/specs/2026-10-15-terrain-navigation-design.md,
-// part 2): walk legs routed on the navigation grid (tools/lib/nav/path.js)
+// The planner's terrain routes (docs/ARCHITECTURE.md, "Navigation grid"):
+// walk legs routed on the navigation grid (tools/lib/nav/path.js)
 // in a worker pool, cached by leg, and the grid's overlays for the page.
 //
 //   const routes = new NavRoutes({ dir: 'data/local/nav', workers, log });

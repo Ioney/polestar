@@ -1,6 +1,6 @@
 'use strict';
-// The navigation grid's rules (tools/lib/nav/grid, spec
-// docs/superpowers/specs/2026-10-15-terrain-navigation-design.md 1b) on
+// The navigation grid's rules (tools/lib/nav/grid; docs/ARCHITECTURE.md,
+// "Navigation grid") on
 // synthetic triangle soups: slopes, steps and jumps, falls, liquids, doors,
 // components, and the tile file format.
 

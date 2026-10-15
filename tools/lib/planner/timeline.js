@@ -1,5 +1,5 @@
 'use strict';
-// The planner's playback engine (docs/superpowers/specs/2026-10-14-route-planner-design.md §3):
+// The planner's playback engine (docs/ARCHITECTURE.md, "Route planner"):
 // a route of compiled guides played goal by goal for one character with the
 // simulator's priors (tools/lib/sim/params.js means), the XP rules of
 // tools/lib/game/xp.js and the flights and boats of travel.json.
@@ -27,8 +27,8 @@
 //   kills may be fractional: rounded up for the samples, exact for time and XP;
 // - item objectives follow the bag; event objectives complete when the
 //   character reaches their point (60 yd) or by `complete` (escortSec);
-// - walks (docs/superpowers/specs/2026-10-15-terrain-navigation-design.md
-//   part 2): every walk leg of moveTo (to a goal's place, a boat, a flight
+// - walks (docs/ARCHITECTURE.md, "Navigation grid"): every walk leg of
+//   moveTo (to a goal's place, a boat, a flight
 //   master, a spawn pool away from the character) asks `routes(a, b,
 //   profile)`, a synchronous route provider -> { ok, reason, pts (wx, wy, z
 //   per point), cls (per segment, tools/lib/nav/grid/format.js CLS), yards,

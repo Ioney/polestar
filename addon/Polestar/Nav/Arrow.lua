@@ -113,10 +113,11 @@ ring:SetTexture(MEDIA .. "arrived")
 ring:SetSize(DIAL, DIAL)
 ring:SetPoint("CENTER")
 
--- A travel instruction (hearth, fly, take a boat) has no direction to point
--- at: the dial shows what to do instead, the leg's glyph in the accent.
+-- A travel instruction (hearth, teleport, fly, take a boat or a lift) has no
+-- direction to point at: the dial shows what to do instead, the leg's glyph in the accent.
 local UI_MEDIA = "Interface\\AddOns\\" .. ADDON .. "\\Media\\UI\\"
-local LEG_ICON = { hearth = "icon-hearth", fly = "icon-fly", boat = "icon-boat", zeppelin = "icon-boat", tram = "icon-boat" }
+local LEG_ICON = { hearth = "icon-hearth", teleport = "icon-use", fly = "icon-fly", boat = "icon-boat", zeppelin = "icon-boat",
+	tram = "icon-boat", portal = "icon-gate", lift = "icon-lift" }
 local legIcon = dial:CreateTexture(nil, "ARTWORK")
 legIcon:SetSize(DIAL * 0.6, DIAL * 0.6)
 legIcon:SetPoint("CENTER")
@@ -314,7 +315,7 @@ local function sample(elapsed)
 		frame:Hide()
 		return false
 	end
-	local state, dist, angle = Nav.Sample()
+	local state, dist, angle, _, _, measured = Nav.Sample()
 	if Nav.IsHiddenState(state) then
 		frame:Hide()
 		return false
@@ -352,8 +353,8 @@ local function sample(elapsed)
 
 	if showEta then
 		if routed then
-			-- Whole-route time: legs ahead plus this walk.
-			local secs = T.Remaining(dist)
+			-- Whole-route time: legs ahead plus this walk (`measured`: dist is along a path).
+			local secs = T.Remaining(dist, measured)
 			if secs then showSeconds(secs) else etaText:Hide() end
 			return true
 		end

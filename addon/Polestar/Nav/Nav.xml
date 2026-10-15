@@ -4,6 +4,12 @@
 	<Script file="Arrow.lua"/>
 	<Script file="Layers.lua"/>
 	<Script file="Bridges.lua"/>
+	<Script file="Transit.lua"/>
 	<Script file="Travel.lua"/>
+	<Script file="Walk.lua"/>
 	<Script file="TravelData.lua"/>
+	<Script file="Journey.lua"/>
+	<Script file="Nearby.lua"/>
+	<Script file="Prompts.lua"/>
+	<Script file="Alerts.lua"/>
 </Ui>

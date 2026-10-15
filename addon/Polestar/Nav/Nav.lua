@@ -278,14 +278,17 @@ end
 ---------------------------------------------------------------------------
 -- Situation sampling. Allocation-free: called from throttled OnUpdates.
 --
--- Nav.Sample() -> state, distance, relAngle, dNorth, dWest
+-- Nav.Sample() -> state, distance, relAngle, dNorth, dWest, measured
 --   state: "none" | "instance" | "taxi" | "unknown" | "far" | "travel" | "arrived"
 --          | "instruction" (a route leg to act on here: fly, ride, hearth)
 --          | "search" (reached a spot of an area objective: look around here)
 --          | "nopos" (the client gives no player position here: the Deeprun
 --            Tram, a map of its own without a world map)
 --   distance/relAngle/dNorth/dWest are toward what the arrow points at: the
---   current route leg's end while a travel route is active, else the target.
+--   current route leg's end while a travel route is active, else the target;
+--   on a walk the walking engine has a path for (Nav/Walk.lua), the angle is
+--   toward the path's next point and the distance is what is left of the path
+--   (measured = true: the distance is along a path, not a straight line).
 --   An area target (`area`, yards: a spawn area) is reached anywhere inside
 --   it plus its arrival radius `r`, and its distance is to the area's edge;
 --   with `search` set (an area objective) reaching it is "search", never "arrived".
@@ -330,13 +333,14 @@ function Nav.Sample()
 
 	local T = Nav.travel
 	if T and T.Active and T.Active() then
-		local mode, ac, ax, ay = T.Aim(pc, px, py)
+		local mode, ac, ax, ay, left = T.Aim(pc, px, py)
 		if mode == "instruction" then
 			if ac == pc then return "instruction", toward(C, px, py, ax, ay) end
 			return "instruction"
 		elseif mode == "walk" then
 			if ac ~= pc then return "far" end
-			return "travel", toward(C, px, py, ax, ay)
+			local dist, angle, dn, dw = toward(C, px, py, ax, ay)
+			return "travel", left or dist, angle, dn, dw, left ~= nil
 		end
 		-- nil: the last leg, straight to the target
 	end
@@ -353,7 +357,20 @@ function Nav.Sample()
 		playArrival()
 	end
 	if arrived and target.search then return "search", dist, angle, dn, dw end
-	return arrived and "arrived" or "travel", dist, angle, dn, dw
+	if arrived then return "arrived", dist, angle, dn, dw end
+	-- Along the walking engine's path when it has one (Nav/Walk.lua); the
+	-- distance is then what is left of it (an area target: to its edge, straight).
+	local W = Nav.walk
+	if W then
+		local leg = T and T.CurrentLeg and T.CurrentLeg()
+		local wc, wx, wy, left = W.Aim(pc, px, py, tC, tX, tY, (leg and leg.handmade) or W.FollowsGoto(target))
+		if wc then
+			local _, a2, dn2, dw2 = toward(C, px, py, wx, wy)
+			if area and area > 0 then return "travel", dist, a2, dn2, dw2 end
+			return "travel", left, a2, dn2, dw2, true
+		end
+	end
+	return "travel", dist, angle, dn, dw
 end
 
 -- States in which nothing is drawn at all.

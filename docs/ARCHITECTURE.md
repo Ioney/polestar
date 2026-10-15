@@ -2765,10 +2765,10 @@ the planner and the navigation grid both come from.
 
 - **Coordinates** (`tools/lib/planner/geo.js`): world `{ c, wx, wy }` (the
   client's yards, `c` the instance map), map percent per frame (`f = "e"` Era,
-  else live), and the renderer's plane `X = -wy`, `Y = -wx`; ADT tile
-  `(col, row)` = `map<col>_<row>.blp` = WDT entry `row * 64 + col`.
+  else live), and the renderer's plane `X = -wy`, `Y = -wx`.
 - **Map art** (`planner art`, `tools/lib/planner/art/`): the Forever client's
-  minimap blocks (WDT `MAID`, 8th field) and zone map art (UiMapArtTile plus
+  minimap blocks (WDT `MAID`, 8th field; ADT tile `(col, row)` =
+  `map<col>_<row>.blp` = WDT entry `row * 64 + col`) and zone map art (UiMapArtTile plus
   every WorldMapOverlay), fetched by fileDataID from wago.tools into
   `data/sources/casc/<product>/<build>/`, built into `data/local/planner/art/`:
   `index.json`, a BC1 pyramid of 512 px tiles with 8 mips each (level 0 one
@@ -2796,7 +2796,11 @@ the planner and the navigation grid both come from.
   file at once, keep an undo history and are pushed to the page over
   `GET /api/events` (SSE), as are external changes (fs.watch). A full lint
   runs in a worker thread 600 ms after changes; `pack_compile` writes the
-  addon folder as `compile` does.
+  addon folder as `compile` does. The server answers only requests naming it
+  in Host, runs only JSON POSTs from no Origin or its own, refuses an icon
+  GET (which may fetch from wago.tools) that the browser marks as another
+  site's, and forbids framing (`X-Frame-Options: DENY`,
+  `frame-ancestors 'none'`).
 - **Navigation** (`tools/planner/navpool.js`; the grid itself: "Navigation
   grid" below): with a navigation grid (`data/local/nav`, `nav build`) every
   walk of the playback is routed on it with the character's movement profile

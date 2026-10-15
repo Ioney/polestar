@@ -28,7 +28,11 @@
 // name the server itself in Host (127.0.0.1, localhost or [::1] at its port;
 // else 421, against DNS rebinding), and a POST must be application/json with
 // no Origin or our own (else 403): a cross-site JSON POST needs a preflight,
-// which the 405 for OPTIONS fails, so another site cannot run commands.
+// which the 405 for OPTIONS fails, so another site cannot run commands. A GET
+// that fetches from wago.tools (/icon/) is refused (403) when the browser
+// says another site asked for it (Sec-Fetch-Site other than same-origin or
+// none), and no answer may be framed by another page (X-Frame-Options DENY,
+// Content-Security-Policy frame-ancestors 'none').
 
 const http = require('node:http');
 const fs = require('node:fs');
@@ -74,8 +78,11 @@ function body(req, limit = 4 << 20) {
 	});
 }
 
+// Every answer: no other page may frame the planner (against clickjacking its edit buttons).
+const FRAMING = { 'x-frame-options': 'DENY', 'content-security-policy': "frame-ancestors 'none'" };
+
 function send(res, status, type, data, cache = 'no-store', extra = {}) {
-	res.writeHead(status, { 'content-type': type, 'cache-control': cache, ...extra });
+	res.writeHead(status, { 'content-type': type, 'cache-control': cache, ...FRAMING, ...extra });
 	res.end(data);
 }
 const json = (res, status, value) => send(res, status, 'application/json; charset=utf-8', JSON.stringify(value));
@@ -144,7 +151,7 @@ async function startServer(opts = {}) {
 	}
 
 	function events(req, res) {
-		res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' });
+		res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no', ...FRAMING });
 		res.write(`retry: 2000\nevent: hello\ndata: ${JSON.stringify({ version, packs: ws.packs.map((p) => p.id) })}\n\n`);
 		clients.add(res);
 		const beat = setInterval(() => res.write(`: ping ${Date.now()}\n\n`), HEARTBEAT_MS);
@@ -240,11 +247,18 @@ async function startServer(opts = {}) {
 	// Host names this server answers to (set once it listens and knows its port).
 	let own = new Set();
 	const JSON_TYPE = /^application\/json\s*(;|$)/i;
+	// GETs that may fetch from wago.tools.
+	const REMOTE_GET = /^\/icon\//;
 	// Why a request is refused ([status, message]), or null.
 	function refused(req) {
 		const hostHeader = String(req.headers.host || '').toLowerCase();
 		if (!own.has(hostHeader)) return [421, `this planner answers to ${[...own][0]} only, not Host "${hostHeader}"`];
-		if (req.method === 'GET' || req.method === 'HEAD') return null;
+		if (req.method === 'GET' || req.method === 'HEAD') {
+			// A GET that fetches remotely: only for our own page or a tool (no Sec-Fetch-Site).
+			const site = req.headers['sec-fetch-site'];
+			if (site !== undefined && site !== 'same-origin' && site !== 'none' && REMOTE_GET.test(new URL(req.url, 'http://localhost').pathname)) return [403, `a ${site} request for ${req.url} is refused`];
+			return null;
+		}
 		const origin = req.headers.origin;
 		if (origin !== undefined && !own.has(String(origin).toLowerCase().replace(/^http:\/\//, ''))) return [403, `requests from ${origin} are refused`];
 		if (!JSON_TYPE.test(String(req.headers['content-type'] || ''))) return [403, 'requests must be application/json'];

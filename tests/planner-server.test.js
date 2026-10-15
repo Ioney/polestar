@@ -45,7 +45,7 @@ function raw(port, { method = 'POST', path: p = '/api/cmd', headers = {}, body =
 			res.on('data', (d) => {
 				text += d;
 			});
-			res.on('end', () => resolve({ status: res.statusCode, body: text }));
+			res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: text }));
 		});
 		req.on('error', reject);
 		req.end(body);
@@ -128,6 +128,28 @@ test('only this machine\'s JSON requests run commands', async () => {
 	await ok(server.url, 'edit_undo');
 	assert.equal(fs.readFileSync(fileB, 'utf8'), start);
 	assert.equal((await raw(server.port, { method: 'GET', path: '/api/commands', headers: { host: `[::1]:${server.port}` } })).status, 200);
+});
+
+test('another site cannot make the planner fetch icons, and no page may frame it', async () => {
+	const icon = (site) => raw(server.port, { method: 'GET', path: '/icon/item/750.png', headers: site ? { 'sec-fetch-site': site } : {} });
+	for (const site of ['cross-site', 'same-site']) {
+		const r = await icon(site);
+		assert.equal(r.status, 403, site);
+		assert.equal(JSON.parse(r.body).code, 'forbidden');
+	}
+	// The page itself and tools (no Sec-Fetch-Site) pass the check: a bad key is the icon route's own 400.
+	for (const site of ['same-origin', 'none', null]) {
+		const r = await raw(server.port, { method: 'GET', path: '/icon/item/x.png', headers: site ? { 'sec-fetch-site': site } : {} });
+		assert.equal(r.status, 400, String(site));
+	}
+	// Local-only GETs stay readable by any page's <img> (map art, glyphs).
+	assert.equal((await raw(server.port, { method: 'GET', path: '/glyph/play.png', headers: { 'sec-fetch-site': 'cross-site' } })).status, 200);
+	for (const [p, status] of [['/', 200], ['/api/commands', 200], ['/nope', 404], ['/icon/item/750.png', 403]]) {
+		const r = await raw(server.port, { method: 'GET', path: p, headers: p.startsWith('/icon/') ? { 'sec-fetch-site': 'cross-site' } : {} });
+		assert.equal(r.status, status, p);
+		assert.equal(r.headers['x-frame-options'], 'DENY', p);
+		assert.equal(r.headers['content-security-policy'], "frame-ancestors 'none'", p);
+	}
 });
 
 test('map art: the index and gzip tiles the browser unpacks', async () => {

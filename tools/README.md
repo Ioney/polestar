@@ -29,6 +29,7 @@ is installed. The contract the tools write to is in
 | `doctor` | Checks Node, Lua, the reference data, the AddOns folder and a pack's `pack.json` |
 | `install` | Copies (or with `--link`, symlinks) the addons into the game's AddOns folder; given a guide pack, builds and installs that pack |
 | `play` | The playground: the real addon in the browser against a simulated world |
+| `planner` | The route planner: a guide played on the real map with its clock, XP and quest log, its walks routed on the navigation grid when `nav build` has built it (`--nav <dir>`), edited in place; `planner art` builds its map art, `planner mcp` serves its commands to AI agents |
 | `preview` | Renders the guide window, the hub and the options to `docs/preview/*.svg` |
 
 ### Writing guides and packs
@@ -61,6 +62,8 @@ without QuestieDB.
 | `exploration build` / `exploration check` | Writes or checks the exploration guides in `guides/forever/exploration` |
 | `trainers build` | Builds `data/forever/trainers.json` and `Core/ClassTrainers.lua` |
 | `travel build` | Builds the travel network: `data/forever/travel.json`, `Nav/TravelData.lua`, `Polestar_Travel`; `travel route` runs the in-game planner between two points; `travel chain` drafts an approach chain from recorded walks |
+| `nav build` / `nav path` | The navigation grid in `data/local/nav`: where a character can walk, climb, fall, swim and ride lifts, built from the Forever client's terrain, water and model collision (local only); `nav path` prints the route between two map points |
+| `nav aids` | The arrow's zone crossings, open borders and approach chains generated from the navigation grid (`nav build`) into `data/local/nav/aids.json` (crossings schema); `--report` measures the arrow on every guide leg without and with them; `--lua <file>` writes a Crossings.lua for a local test |
 | `maps build` / `maps overlays` | Zone level ranges (`Maps/ZoneLevels.lua`) / zone art overlays (`UI/ZoneArtOverlays.lua`) |
 | `qol build` | Spirit healers and flight masters (`QoL/Data.lua`) |
 | `itemdb build` | The `Polestar_ItemDB` item stats (`Items.lua`) |
@@ -90,6 +93,7 @@ The release steps are in [docs/RELEASING.md](../docs/RELEASING.md).
 | `media/` | Texture generators run by `media`: `nav.js`, `qol.js`, `ui.js`; the wordmark fonts in `media/fonts` |
 | `preview/` | `preview`'s renderer: a geometry-recording client stub (`stub.lua`), font outlines, SVG drawing, and a zlib encoder of its own for the textures (`deflate.js`), so the renders are byte-identical on any Node |
 | `play/` | The playground: server, Lua session, driver and the page in `play/public` |
+| `planner/` | The route planner: server, workspace (packs, sources, edits, undo, lint), the command registry shared by HTTP, MCP and WebMCP, the MCP bridge, the walk routes on the navigation grid (`navpool.js`: worker pool, route cache, Walkable tiles) and the page in `planner/public` (WebGL2 map in `public/map`) |
 | `readme/` | The README's art, drawn by `readme`: `brand.js` (banners, emblem, logo, download and CurseForge buttons, CurseForge avatar) with the wordmark outlines of `outline.js`, `charts.js` (route charts) and `png.js` (the listing's PNG copies, through `rsvg-convert`) |
 | `templates/pack/` | What `new` copies into a new guide pack |
 
@@ -111,8 +115,10 @@ The release steps are in [docs/RELEASING.md](../docs/RELEASING.md).
 | `itemdb/` | `itemdb build`: item stats from the client tables |
 | `lua.js` | Runs Lua 5.1 for the tools (reading SavedVariables and other addons' data) |
 | `maps/` | `maps build` (zone levels) and `maps overlays` |
+| `nav/` | `nav build`: `geom/` reads the client's terrain, liquids and WMO/M2 collision per map tile; `grid/` rasterises them into walkable surfaces, walls, links (steps, slopes, falls, swims, lifts), regions and the per-tile graph; `path.js` snaps points and routes on it; `move.js` the movement profiles; `aids.js` and `arrow.js` the arrow's generated crossings and their measurement |
 | `pack/` | The pack contract: which pack a command works on, `pack.json`, building a pack and the format constants |
 | `paths.js` | The repository's folders (`ROOT`, `DATA` for `data/forever`, `SOURCES` for `data/sources`); every tool resolves paths from them |
+| `planner/` | The route planner's library: `geo.js` (world, map and plane coordinates, ADT tiles), `timeline.js` (the playback clock, XP, quest log and track; walk legs and the hops between spawns through a route provider, flights along their taxi path points), `source.js` and `goalfmt.js` (structured edits of `.guide` text), `art/` (wago.tools CASC cache, BLP and BC1, the minimap pyramid and zone art) |
 | `playtest.js` | The guide simulator behind `playtest` and `tests/guides.test.js` |
 | `professions/` | `profession build` and `draft`; `gathering/` is the gathering and secondary profession guide generator behind `profession gathering` |
 | `questdb/` | `questdb build`, and the spawn clustering the compiler also uses |
@@ -162,6 +168,10 @@ file's language written by `header()` in `lib/generated.js`:
 | `docs/curseforge/images/{logo-1024,logo-400,banner,starts,levels}.png` | `readme brand` (all five), `readme charts` (the charts), with `rsvg-convert` (librsvg) installed; without it they print the `rsvg-convert` commands to run | `docs/assets/avatar.svg`, `banner-dark.svg`, `charts/{starts,levels}.svg` | yes | rerun |
 | `docs/assets/charts/{levels,starts}.svg` | `readme charts --draft v0.1.0` | `data/sim`, `guides/`, the guides of the first release (tag `v0.1.0`) | yes | rerun |
 | `data/sim/` | `sim world`, `sim run` and the other `sim` commands | `data/forever` | local | `lint` notes a cached world built from other data and skips its check |
+| `data/local/planner/art/` (`index.json`, BC1 terrain tiles, zone PNGs) | `planner art` | the Forever client's minimap blocks and world map art (files by fileDataID from wago.tools, cached in `data/sources/casc/<product>/<build>/`), its Map, UiMap and map art tables, `data/forever` map-frames | local, never distributed | `index.json` records the client build; rerun after a new build |
+| `data/local/nav/` (`index.json`, `lifts.json`, `tiles/<c>/<col>_<row>.nav.gz` and `.walls.gz`, `graph/<c>.bin.gz`) | `nav build` | the Forever client's map tiles (root and obj0 ADTs), WMO and M2 models, Map, LiquidType, LiquidMaterial, LiquidObject and TransportAnimation tables (files by fileDataID from wago.tools, cached in `data/sources/casc/` and `data/sources/wago/`), `data/forever` objects (elevators), map-frames | local, never distributed | `index.json` records the client build and the build time; rerun after a new client build |
+| `data/local/nav/routes-<build>.jsonl` | `planner` (walks it routes) | the navigation grid of `nav build` and the route code (`tools/lib/nav`) | local | the file name holds the grid's build id (a hash of its `index.json`, `lifts.json` and the route code): a rebuilt grid or changed costs start a new file; old ones can be deleted |
+| `data/local/nav/aids.json`, `aids-report.json`, `aids-report.md` | `nav aids` (`--report` for the report) | the navigation grid, `data/forever` zones, quests, npcs, objects, trainers, travel; the AreaTable of the grid's client build (`data/sources/wago/<build>/`); `guides/`; `tools/lib/codex/entrances.json`; the reference `data/local/crossings.json` (compared, never changed) | local, never distributed | `build` in the file names the grid's client build; rerun after `nav build` |
 | `data/recordings/*.json` | `record import` / `record watch` | the Recorder's SavedVariables | local | none |
 | `dist/` | `pack` | `addon/`, `guides/` | local | none |
 

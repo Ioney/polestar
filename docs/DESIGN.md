@@ -299,6 +299,51 @@ components:
     backgroundColor: "{colors.bg}"
     textColor: "{colors.text}"
     width: "440px"
+  planner-bar:
+    backgroundColor: "{colors.bg}"
+    textColor: "{colors.text}"
+    padding: "0 16px 0 14px"
+    height: "56px"
+  steps-pane:
+    backgroundColor: "{colors.sidebar}"
+    textColor: "{colors.text}"
+    width: "340px"
+  step-row:
+    textColor: "{colors.text}"
+    typography: "{typography.body}"
+    padding: "6px 14px 0 16px"
+  step-row-selected:
+    backgroundColor: "{colors.selected}"
+  map-pin:
+    backgroundColor: "{colors.scrim}"
+    rounded: "{rounded.capsule}"
+    size: "24px"
+  map-pin-current:
+    backgroundColor: "{colors.scrim}"
+    rounded: "{rounded.capsule}"
+    size: "31px"
+  map-label:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.text}"
+    typography: "{typography.label}"
+    rounded: "{rounded.square}"
+    padding: "2px 7px 3px"
+  map-banner:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.text}"
+    typography: "{typography.body}"
+    padding: "0 6px 0 12px"
+    height: "36px"
+  transport-bar:
+    backgroundColor: "{colors.footer}"
+    padding: "0 16px"
+    height: "56px"
+  scrubber:
+    backgroundColor: "{colors.track}"
+    height: "2px"
+  scrubber-fill:
+    backgroundColor: "{colors.accent}"
+    height: "2px"
 ---
 
 # Design System: Polestar
@@ -438,6 +483,7 @@ Every hub and options window lays out on one grid. The options window is 960×68
 - **Dungeon journal:** two-column cards (a 72px painting over a 40px stats line, 16px apart); quest blocks between hairlines with an 88px label column; reward tiles 200×32, 8px apart.
 - **Route choice:** cards 272 wide with an 18px inset and 12px between, under a 112px header and over a 56px footer; stat rows, chips, rules and bullets align across cards.
 - **Guide window:** 340 wide by default (260–560 by its grip), 14px inset; a 28px tab strip, a 34px navigator, goal rows from 24px with 15px glyphs at x 14 and text at 39, a 26px progress footer.
+- **Route planner:** a browser page, not a game window, so it keeps its own lines rather than the 112 and 152: a 56px top bar, a 56px transport bar, and between them three panes: the 340px steps pane on the sidebar ground, the map edge to edge, and a 340px pane on the window ground (the character sheet, or the step editor while editing), each split from the map by a hairline and headed by a 44px row (Heading, its count in Number textMuted). Text sits 16px in from the left. It is laid out for desktop browsers from 1280px wide: the panes keep their width and the map takes the rest; there is no phone layout.
 - **Scale, not breakpoints:** windows are fixed sizes that scale with the UI scale and the Menu scale setting; labels truncate against their control, so longer localised strings never push the grid.
 
 ### Named Rules
@@ -564,11 +610,28 @@ Where the game gives no position (the Deeprun Tram), the arrow never vanishes: o
 ### Quest Reward Marks
 On the game's own reward panel (the quest giver's detail and reward pages and the quest log), Polestar marks the choices on their item icons and never over their names, with no words. Every choice that is an upgrade for the player's spec carries the up arrow (`qol-upgrade`, success) in the icon's top-left corner, where the client puts its own bag upgrade arrow: a 20px badge whose tip lands on the icon's corner. The reward to take, the one auto-pick would choose, is framed: a 2px accent frame just outside the icon, clear of the client's quality border, on a 1px shade keyline so it holds on the parchment and on dark skins. The one that sells for most takes the coin (`qol-coin`, accent) in the icon's top-right corner, beside any upgrade arrow; when no choice is an upgrade it is also the one framed. Both badges are glyphs on a 70% shade rim drawn into the texture, so they read on any icon. The percentage is on the tooltip, never the panel ("+12% upgrade · Head").
 
+### The Route Planner
+A page in a desktop browser (`node tools/polestar.js planner`) that plays a guide's route on the game's map for guide authors, and edits it in place. It is the addon's world laid flat: the same grounds, accent, subject colours, Inter weights, hairlines and glyph family, every colour a CSS custom property named after its Theme token (`--panelAlt` is `panelAlt`), which the map renderer reads once as it starts. It offers no scheme, accent or font choice: Dusk, Polestar gold and Inter. Every string carries the game's 1px text shadow, numbers are tabular, and nothing it shows from the game ships.
+- **Top bar:** 56px on the window ground under the starlit band at 1:1, cropped to the bar. The 28px emblem in the accent and "Planner" in Title, a hairline divider, Library (ghost), the pack in Body textDim, a chevron and the guide in Title, undo and redo; at the right Playback and Edit as 28px filter segments, the character (its class and race icons, name, side and start level on a 32px shade well), the connection dot (6px, success or danger), Changes (ghost) and Compile, the page's one primary.
+- **Steps pane:** a legend of the time split, then each guide's header (56px on the window ground, pinned to the top of the list while its steps scroll: the title in Heading with its level range on an accent chip, its time and level span in Small textMuted, the next guide at the right in textDim). Each step is a row: its start time (Number textMuted, 46px), its number (Number textMuted; the accent when selected), the title in Body, and its time (Number textDim; warning when it rests on an estimate) over a 40×2px bar split into travel (npc), combat (danger), interact (place) and wait (textMuted). Under it one 20px Label line per goal at a 60px indent: its icon, the verb in textDim, the name in its subject colour; a skipped goal is struck through at 60%; then "N more" and a kill summary in Small textMuted. Selected: the selection wash and the 2px accent bar at the left. A step that does not apply to the character fades to 45%; diagnostics show as a warning glyph and a count, in danger when one is an error.
+- **Icons:** two families (see The Two Families Rule). Glyphs are CSS masks painted in the current colour. Game icons are square in a 1px hairline frame on the inset well, read from the author's own client and cached locally, never committed or shipped (THIRD_PARTY.md), as zone paintings are.
+- **Character sheet:** the level in Hero with the XP in Number textDim, a 2px accent XP bar, fact rows (32px, the label in textDim at the left, the value at the right, a hairline under each; a place in its place colour), then collapsible sections under 44px Heading rows with a chevron: the quest log (quest names in quest gold with the "!" or "?" icon, objectives in textMuted, "Ready" in success; a quest that changed flashes the accent wash once), quest items (item lilac, the count in Number) and flight paths.
+- **Step editor:** the right pane in Edit. Step fields are 40px rows: a 64px label column in Label textDim, borderless inputs with a hairline under them; focus puts the shade well under the field and lights its hairline in the accent at 80%. Goals are cards on the control ground with a hairline: a 36px head (the goal's icon at 18px, the verb as a quiet dropdown, its source line, small icon buttons to locate, move, insert and delete), fields in a 72px label column, and the goal's source line in the system monospace on the inset well, the one place the page shows code. A selected card's border is the accent at 80%, a card with an error the danger colour. Diagnostics are rows of a status glyph, the line number and the message.
+- **Map:** the centre pane, edge to edge on the sea (the art's own filler, else the sidebar ground). Its controls float over it: a 44px head row on a scrim fade (70% to nothing) whose dropdowns and ghost buttons sit on the scrim at 55%; a zoom stack of 30px buttons on the raised ground at 94% with a hairline; a 36px activity banner of the same make, centred 16px above the foot, saying in one line what is happening now with its icon and the one action that fits it; the route legend at the bottom left.
+- **Route lines:** walking is a solid line: the current leg 4.5px in the accent over a shade casing, past legs 2.5px in textDim at 40%, the legs ahead 2px in textDim at 50%, dashed 6 on and 5 off. Flights are short dashes in spell cyan (4 on, 5 off), boats long dashes in NPC sky (18 on, 6 off), each brighter on the current leg. The search between spawns inside a kill or collect area is thinner and fainter still: it is not a leg of the route. Teleports draw no line.
+- **Pins:** a 24px scrim disc holding the goal's game icon (a square icon in a circle mask, a cut-out client mark whole) or the verb's glyph in its subject colour. The current goal's pin grows 1.3× (31px) inside a 2px accent ring on a 2.5px scrim rim at 85%, so it holds on light terrain, with the Starlight glow (the accent at 50%); done goals recede to 60% and lose most of their colour. Kill and collect areas are discs in the subject colour (32% fill, 55% edge), spawn points 6px dots in it, go-to and explore radii a dashed accent ring at 80%. The character is the Polestar arrow, 40px in the accent over its glow, turned to its heading.
+- **Map labels:** the current goal's name in a pill (the raised ground, a hairline, Label text). Zone names in Caption, upper case and letter-spaced 0.12em, on the text-on-art shadow; continents 13px at 0.2em in textDim. That lettering belongs to the map and never labels a heading. Labels are placed greedily, the current one first, and never cover a pin, another label or the map's controls; one that fits nowhere is left out.
+- **Handles (Edit):** each located goal is a 15px disc in its subject colour with a 2px ink edge (18px with an accent edge under the cursor; hollow, on the scrim at 55%, where the place is implied rather than written), dragged to move it; a radius shows as an ink ring at 80% that drags too, in the accent under the cursor. A drag writes the .guide file.
+- **Transport bar:** 56px on the footer ground: play (a 32px button on the control ground, its glyph in the accent), previous and next step, the clock (Number, the total in textMuted), the scrubber, the speed (a 72px dropdown) and the route's totals in Small textMuted, the estimated steps in warning. The scrubber is a 40px hit area over a 2px track wash with an accent fill and a 12px thumb in text that grows 1.15× under the cursor; 1×6px ticks mark guide bounds (hairline) and level-ups (quest gold at 45%); its tooltip is Small on the raised ground with a hairline.
+- **Windows over the page:** the library (the guide menu: a 380px list on the sidebar ground beside the guide's details under a 216px zone painting), the Changes drawer (400px, from the right) and toasts (the raised ground, a status glyph) cast the window shadow and come in over 180ms; the library dims the page behind it with the scrim at 55%. Popovers and menus lift by tone and hairline only, as in the addon.
+
 ### Motion
 Three durations: 120ms for shells opening, menus, page changes, toggles and chrome appearing; 180ms for content changing in place and the route choice opening; 200ms for progress fills and the combat fade. A strong (quartic) ease-out for anything entering or answering the player, and a small back-out pop for a check landing. Options pages fade in without moving; the next person slides up 6px as it fades in; the rare alert settles 18px from above. Reduced motion snaps every movement (offset, size, scale, width) and keeps fades at 60% of their length. Nothing runs per frame unless something is moving.
 
 ### Named Rules
 **The Selection Bar Rule.** A 2px accent bar at an edge marks the one selected or current thing: the active rail section and sidebar row (left edge), the active tab (underline), the selected list row, the goal or person the arrow points at. It is never decoration.
+
+**The Two Families Rule.** On the planner page, controls and verbs wear the authored glyphs and things wear the game's own icons: a goal shows the icon of what it is about (the quest marker, the item, the spell, the class), the character its class and race. Where the game has no icon for it (a kill, a place) or the icon is missing, the verb's glyph stands in, in the subject colour; a game icon never marks a control.
 
 ## Do's and Don'ts
 

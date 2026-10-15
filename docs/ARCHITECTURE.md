@@ -1276,6 +1276,39 @@ reviewer, moves the mouth. The walks are `tools/lib/travel/paths.js`
 `recordedWalks`, the ones learned paths are built from; the chain is
 `crossings.js` `recordedChain`.
 
+**Aids from the navigation grid.** `node tools/polestar.js nav aids`
+(`tools/lib/nav/aids.js`; the grid is described under "Navigation grid")
+generates a file in this schema from the grid (`nav build`) with
+no per-place rule: a surface's zone is its chunk's area id walked up
+ParentAreaID to a zone map with an Era frame (Ironforge and Undercity, whose
+chunks belong to the zones around them, stay `wild`); a zone's open ground
+is its largest component over gentle links (up to 35°, jumps, swims, lift
+rides) inside the zone; a zone pair is `open` when at least 60% of its land
+border joins the two open grounds, no blocked stretch passes 400 yd and most
+probes across route easily (no steep ground or climbs, at most x1.6 the
+straight line's time); otherwise every walkable passage (border links and
+falls between the open grounds, joined within 40 yd, cut at 200 yd) that an
+easy route crosses is a crossing (ends 25-60 yd inside each zone along that
+route, radius half the passage's width, one way when only falls cross it;
+captions for tunnels, model bridges over liquid or air, and lifts). Every
+place the guides, quest givers and enders, flight masters, inns, trainers and
+dungeon entrances use is tested for a pocket: when most straight lines from
+up to 12 open-ground points around it are not walkable and 75% of the routes
+from them share their last 40 yd or more, through a cave (indoor under
+terrain), a building, a lift, a climb or a narrow way, that stretch becomes
+an approach chain (targets on one chain's way join it). It writes
+`data/local/nav/aids.json` (`source` and `build`, the grid's client build,
+on top) and with `--report` `aids-report.{json,md}`: every consecutive pair
+of located goals in the guides planned by `tools/lib/nav/arrow.js` (many
+PlanRoute calls in one Lua process) without and with the aids, and how many
+walk legs cross ground the grid cannot walk (`nav.los`), plus a comparison
+with the local crossings file (never changed). `--lua <file>` writes the
+aids as a Crossings.lua; `node tools/polestar.js travel build --offline
+--crossings data/local/nav/aids.json --travel-addon <test folder> --json
+<test folder>/travel.json --lua <test folder>/TravelData.lua` builds a test
+copy of the data addon from them without touching `addon/Polestar_Travel` or
+the committed travel files. Shipping them is the owner's call.
+
 ## Quests — quest database, markers, tooltips, quest levels
 
 `addon/Polestar/Quests/` loads the load-on-demand data addon
@@ -2722,6 +2755,113 @@ XP/hr. Then three lists: slowest steps by XP/hr; steps at least twice and
 2 minutes over the guide's median step time (compiled packs carry no time
 estimate to compare against); detours, steps with 600+ yd of median travel and
 no XP or a third of the guide's XP per yard.
+
+### Route planner (`planner`)
+
+`node tools/polestar.js planner [<pack dir>...] [--port 8078] [--nav <dir>]` serves a local
+page (127.0.0.1 only) that plays a guide route on the game's map and edits its
+`.guide` sources.
+
+- **Coordinates** (`tools/lib/planner/geo.js`): world `{ c, wx, wy }` (the
+  client's yards, `c` the instance map), map percent per frame (`f = "e"` Era,
+  else live), and the renderer's plane `X = -wy`, `Y = -wx`; ADT tile
+  `(col, row)` = `map<col>_<row>.blp` = WDT entry `row * 64 + col`.
+- **Map art** (`planner art`, `tools/lib/planner/art/`): the Forever client's
+  minimap blocks (WDT `MAID`, 8th field) and zone map art (UiMapArtTile plus
+  every WorldMapOverlay), fetched by fileDataID from wago.tools into
+  `data/sources/casc/<product>/<build>/`, built into `data/local/planner/art/`:
+  `index.json`, a BC1 pyramid of 512 px tiles with 8 mips each (level 0 one
+  ADT block, level 6 the whole grid; missing blocks in the map's sea colour),
+  and one unfogged PNG per zone over its live frame. Local only, never shipped.
+- **Playback** (`tools/lib/planner/timeline.js`): plays compiled guides goal
+  by goal for one character with the simulator's priors (walk x detour, kill
+  time by level gap and class, talk and use times, drop rates, flights over
+  `travel.json` legs at 30 yd/s, boats with their waits, hearth with its
+  cooldown, `levelOverhead` per level) and `tools/lib/game/xp.js`. The
+  Timeline holds per step its times, split (travel, combat, interact, wait),
+  levels, XP, goal places and spawn areas, the character's state at its start,
+  plus a position track and events.
+- **Edits** (`tools/lib/planner/source.js`, `goalfmt.js`): the parser records
+  each goal's token spans (`goal.spans`, non-enumerable, so nothing compiled
+  changes); edit operations rewrite only the tokens they change, regenerate a
+  goal line from its fields when a form changes it, move steps and goals with
+  their comments, and add an explicit `zone` line wherever a move would
+  change the zone a goal's coordinates are read in. A result that parses worse
+  than its input is refused.
+- **Commands** (`tools/planner/commands.js`): one registry served as
+  `POST /api/cmd`, as MCP tools (`planner mcp`: stdio JSON-RPC that proxies to
+  a running planner or starts one) and, where the browser has it, WebMCP.
+  Edits name the file's hash and are refused when it changed; they write the
+  file at once, keep an undo history and are pushed to the page over
+  `GET /api/events` (SSE), as are external changes (fs.watch). A full lint
+  runs in a worker thread 600 ms after changes; `pack_compile` writes the
+  addon folder as `compile` does.
+- **Navigation** (`tools/planner/navpool.js`; the grid itself: "Navigation
+  grid" below): with a navigation grid (`data/local/nav`, `nav build`) every
+  walk of the playback is routed on it with the character's movement profile
+  (`tools/lib/nav/move.js` `profileFor`: mount from `mountLevel`, Ghost Wolf,
+  Travel and Aquatic Form, Cheetah, indoor rules): the legs (to a goal's
+  place, a boat, a flight master, a spawn pool away from the character) and
+  the hops between spawn points inside a kill, collect or interact area
+  (picked nearest first as before; kill and loot time stay the priors').
+  `buildTimeline({ routes })` takes a synchronous route provider: a routed
+  walk takes the route's seconds, its track follows the route's points (a
+  leg with a mode per segment: swim, fall, climb, lift, indoor; a hop in
+  fight mode), and the goal records `route { yards, byClass, falls }`; a
+  walk the grid cannot route, or one not computed yet, keeps the
+  straight-line estimate (a hop the spacing model's walk) and marks the goal
+  (`estimate`, `routeReason`) and its step. Totals count `legs`, `routed`,
+  `hops`, `hopsRouted`, `routeSeconds` and `estimateSeconds`. Flights keep
+  their time and, with `flightPaths` (the Era client's TaxiPathNode points of
+  each travel.json taxi leg, read from the cached
+  `data/sources/wago/<build>/TaxiPathNode.csv`), their track follows the
+  points the flight takes. The workspace builds a
+  timeline with the cache as provider; the legs it misses (ends quantised to
+  1 yd, plus the profile's speeds) are computed in a `worker_threads` pool
+  (one Nav per worker; CPUs - 1, at most one per 4 GiB) while `timeline_get`
+  answers at once with the straight legs and `routing { pending, done }`
+  (SSE `routing` each second); when they are all in, the cached timeline is
+  dropped and SSE `changed { timeline: true }` makes a page whose timeline is
+  still being routed ask again (as does an SSE reconnect, and, when no
+  `routing` event for its timeline arrives within 10 s, the page itself).
+  Routes are appended to `data/local/nav/routes-<build>.jsonl`, `build`
+  being a hash of the grid's `index.json`, `lifts.json` and the route code,
+  so restarts are warm and a rebuilt grid (or edited costs) starts afresh;
+  the timeline cache key holds the build. The choice between walking and a
+  boat or a flight master still compares straight-line times.
+  `nav_route` routes one walk for an agent; `GET /nav/index.json` lists the
+  grid's tiles, `GET /nav/tile/<c>/<col>_<row>.png` draws an ADT tile's
+  Walkable layer (per column: nothing walkable, steep, climb, swim only,
+  indoor only; plain ground clear), and `GET /nav/aids.json` serves the
+  arrow aids (`nav aids`, crossings schema) as world points.
+
+### Navigation grid (`nav build`)
+
+`node tools/polestar.js nav build [--continents 0,1] [--force] [--offline]`
+builds `data/local/nav` from the Forever client's own files, fetched by
+fileDataID from wago.tools into `data/sources/casc` (local, never shipped):
+
+- **Geometry** (`tools/lib/nav/geom`): per map tile, the root ADT's terrain
+  (heights, low- and high-res holes, area ids) and MH2O liquids, and the obj0
+  ADT's WMO and M2 placements, each model's collision (WMO faces by the
+  collision and render flags, indoor groups; M2 collision triangles) and WMO
+  liquids, placed with the client's transform (checked against MODF extents).
+- **Grid** (`tools/lib/nav/grid`, constants and file layout in `format.js`):
+  2.0833 yd columns (256 per tile), walkable surfaces with 1.6 yd clearance,
+  walls (model faces of 80° and steeper) stored per column side; links for
+  steps, slopes (terrain to 35° plain, 35-50° and 50-60° slow, 60-80° climbed
+  upward only; models to 50°), jumps to 1.6 yd, falls (free under 14.57 yd,
+  then the servers' damage share `0.018 h - 0.2426`; at most 30 yd onto
+  ground and 60 yd into water; landing only on stable ground), swims and
+  lifts (elevator objects of `data/forever` at their car's travel from the
+  client's TransportAnimation); regions; a per-tile graph per movement class.
+- **Routes** (`tools/lib/nav/path.js`, API in its header; `move.js` the
+  profiles): `snap` picks the surface for a map point (indoor floors before
+  terrain, never a ledge one only falls onto), `route` minimises time for a
+  character (run, swim, mounts, Travel Form, Ghost Wolf, Cheetah, indoor
+  rules, slope, fall and lift costs) with a direct search for near ends and
+  the per-tile graph otherwise, then smooths the path; `los` tests a
+  straight walkable line. `nav path` prints one route.
 
 ## Tests
 

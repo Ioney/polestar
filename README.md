@@ -670,6 +670,47 @@ of your own client's art (`--art`); without it the world is dark.
 </details>
 
 <details>
+<summary><b>The route planner: guides played on the real map</b></summary>
+
+```sh
+node tools/polestar.js planner art       # once: the map art (~330 MB downloaded, ~250 MB built; local only)
+node tools/polestar.js nav build         # once: the navigation grid for terrain-aware walks (~750 MB, ~15-25 min; local only)
+node tools/polestar.js planner           # prints http://127.0.0.1:8078/
+node tools/polestar.js planner mcp       # the same commands for an AI agent (MCP over stdio)
+```
+
+Pick a guide and a character and the route plays on the game's own minimap
+terrain, zone by zone or as the whole 1-60 route across the continents: each
+step's start time and duration split into travel, combat, talking and
+waiting, the level and XP, the quest log and items, the spawn areas and the
+path. The clock is the simulator's model ([docs/SIMULATION.md](docs/SIMULATION.md)),
+so treat absolute hours as estimates and compare steps against each other.
+With the navigation grid built (`node tools/polestar.js nav build`, local
+only) every walk follows the terrain, the walks between mobs in a kill area
+too: around mountains, into caves and buildings, swimming, dropping off
+ledges, mounted from level 40, at the speed of the character's class (Ghost
+Wolf, Travel Form...). Flights follow the flight master's real path. The
+first playback of a route shows straight lines while its walks are routed in
+the background ("Routing…" in the footer), then "Routed N of M legs" (and
+the hops between spawns); routes are cached under `data/local/nav`, so the
+next start is immediate. A walk the grid cannot route stays a straight line,
+marked ≈ in the steps list.
+Layers adds Walkable (what the grid can walk: blocked, steep, climb, water,
+indoors, zoomed in) and Arrow aids (the crossings and approach chains of
+`nav aids`).
+In Edit mode, drag a waypoint, add one with a click, bend a travel line into
+a new labelled waypoint ("Cross the bridge"), or change any goal or
+step in its form: every edit is written into the `.guide` file at once
+(undo with Ctrl+Z; Changes lists and reverts them; Compile builds the addon
+folder), so `dev` picks it up too. Given a pack folder it edits that pack;
+`planner mcp` lets an assistant read routes, edit them and drive the open
+page while you watch (`claude mcp add polestar-planner -- node tools/polestar.js planner mcp`).
+The map art is the Forever client's own, fetched from wago.tools and never
+committed or shipped.
+
+</details>
+
+<details>
 <summary><b>Measuring routes with recordings</b></summary>
 
 ```sh

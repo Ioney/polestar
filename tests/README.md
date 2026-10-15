@@ -55,6 +55,7 @@ client loads them.
 | `stub_lookup_runtime.lua` | The client pieces the Lookup runtime touches: tooltip post-calls, mount auras, Alt-click (global `lookuprt`) |
 | `stub_rares.lua` | Units and vignettes for rare detection |
 | `stub_packs.lua` | Load-on-demand data addons from real files: `LoadAddOn` runs a pack's files once and fires `ADDON_LOADED` |
+| `stub_encoding.lua` | `C_EncodingUtil.DecodeBase64` and `DecompressString` (zlib inflate) in plain Lua 5.1, so `Polestar_Nav`'s walking maps decode as in the client; `stub.decompressed` counts the blocks |
 | `stub_ui.lua` | A stand-in for the Engine, the guide registry, Nav and Compat, with sample guides, for the UI tests and for `preview` (global `uistub`) |
 | `stub_recorder.lua` | The Recorder's slice of the world: player, maps, quest log, NPCs (classification, level), deaths, loot windows and their sources, instances, flight masters, talents |
 | `profile.lua` | Not a stub: per-handler timing and a stack sampler for `helpers/profile.js` |
@@ -98,10 +99,12 @@ CI, they skip; everything else runs.
 |---|---|---|
 | `data/forever/*.json` (reference data) | `data build` and the other data commands | `guides.test.js`, `guides-caves.test.js` and `guides-reported.test.js` (player-reported guide fixes, one case per report), `lint-timed.test.js` (the old and fixed orders of timed quest items, every guide in time; needs item durations), `engine-placement.test.js`, `perf.test.js`, `acceptance-packs.test.js`, `playtest.test.js`, `play.test.js`, `play-pack.test.js`, `play-start.test.js`, `new.test.js`, `dev.test.js`, `dsl.test.js`, `maps-zonelevels.test.js`, `profession-gathering.test.js`, `questdb.test.js`, `planner-timeline.test.js` (the Dwarf chain played to level 55; needs `travel.json` too) |
 | Client map tables cached in `data/sources/wago` | `exploration build` | `exploration.test.js` |
+| Classic Era `TaxiPathNode` cached in `data/sources/wago` | `travel build` | `nav-transit.test.js` (the transport model against every sniffed CMaNGOS period) |
 | `addon/Polestar_QuestDB` | `questdb build` | `questdb.test.js`, `quests.test.js` |
 | `addon/Polestar_Codex` | `codex build` | `lookup-codex.test.js` (release-safe, and Lookup, Dungeons and Rares read it in game) |
 | `data/forever/codex/*.json` | `codex build` | `dungeons-attune.test.js` (the real attunement chains) |
 | `addon/Polestar_ItemDB/Items.lua` | `itemdb build` (committed, so present on a clone) | `itemdb.test.js` |
+| `addon/Polestar_Nav` (Shortest Path Forever's router and walking maps) | `nav vendor <checkout>` (committed, so present on a clone) | `nav-vendor.test.js` (matches `UPSTREAM.json`; walks Goldshire to the Fargodeep Mine mouth on the real maps) |
 | `data/local/crossings.json`, `addon/Polestar_Travel` | the local crossings file, `travel build` | `travel-crossings.test.js`, `nav-crossings.test.js` |
 | `data/local/nav/` (the navigation grid) | `nav build` | `navmesh-path.test.js` (real routes: the Frostmane Hold cave mouth, the Mesa Elevator, the South Gate tunnel) |
 | The Forever client's map tiles and WMO roots cached in `data/sources/casc` | `nav build` | `navmesh-geom.test.js` (WMO bounding boxes on their placements, real tiles) |

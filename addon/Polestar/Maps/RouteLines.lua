@@ -150,7 +150,7 @@ end
 
 -- Pooled lines swap between a flat colour and the dot texture only when their
 -- use changes, and start from the whole texture each time (SPF's pooled
--- zeppelin icon kept old texture coordinates: spf-issues C12).
+-- zeppelin icon kept old texture coordinates: NAV_QA C12).
 local function texture(owner, index, dot)
 	if owner.dots[index] == dot then return end
 	owner.dots[index] = dot
@@ -239,7 +239,7 @@ local function isSmall(mapID)
 end
 
 -- The player's world position, or nil when unknown or unreadable (secret:
--- spf-issues C5).
+-- NAV_QA C5).
 local function playerPosition()
 	local C = ns.Compat
 	if not (C and C.GetPlayerWorldPosition) then return nil end
@@ -359,7 +359,7 @@ local function buildWorld()
 
 	-- In combat the pin is not acquired or released: the pin in hand is
 	-- redrawn (lines only) and the refresh waits for PLAYER_REGEN_ENABLED
-	-- (SPF's map pin refreshes broke in combat: spf-issues C4).
+	-- (SPF's map pin refreshes broke in combat: NAV_QA C4).
 	function provider:RefreshAllData()
 		local C = ns.Compat
 		if C and C.InCombat and C.InCombat() then
@@ -448,7 +448,7 @@ local function drawMinimap(force)
 	local pc, px, py
 	if C and C.GetPlayerWorldPosition then pc, px, py = C.GetPlayerWorldPosition() end
 	local radius, facing, square = ns.Pins.MinimapView()
-	-- An unreadable (secret) position or facing hides the line, with no error (spf-issues C5).
+	-- An unreadable (secret) position or facing hides the line, with no error (NAV_QA C5).
 	local secret = C and C.IsSecret
 	if secret and (secret(pc) or secret(px) or secret(py) or secret(radius) or secret(facing)) then
 		if minimapStrokes.n > 0 then

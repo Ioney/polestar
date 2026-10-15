@@ -12,6 +12,18 @@ details.
 
 Third-party components and data keep their own licences; see THIRD_PARTY.md.
 
+Portions Copyright (C) 2026 Cillian Berragan (Shortest Path Forever,
+https://github.com/cjber/shortest-path-forever), licensed under the GNU
+General Public License, version 3 or (at your option) any later version, and
+adapted for Polestar on 2026-10-15 with his permission. In the Polestar
+folder: Maps/RouteLines.lua, Maps/RouteStrokes.lua, Nav/Alerts.lua,
+Nav/Journey.lua, Nav/Nearby.lua, Nav/Prompts.lua, Nav/Transit.lua,
+Nav/TravelData.lua (its boat, zeppelin, tram and lift timings), Nav/Walk.lua,
+QoL/Flight.lua and UI/JourneyPanel.lua; in the repository's tools, tools/lib/travel/
+timetable.js and tools/lib/travel/cmangos.js. The Polestar_Nav folder is his
+walking router and maps, with its own LICENSE and CREDITS.md. Each of these
+files names what it took from Shortest Path Forever at its top.
+
 World of Warcraft and Blizzard Entertainment are trademarks or registered
 trademarks of Blizzard Entertainment, Inc. Polestar is not affiliated with or
 endorsed by Blizzard Entertainment.

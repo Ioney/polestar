@@ -6,7 +6,7 @@
 // guild/group sync's validation, class teleports, lifts; the generator's
 // transport model, expected waits, lift tracks, portals and teleports, and a
 // deterministic `travel build`. Ids in test names cite
-// docs/superpowers/specs/2026-10-15-spf-issues.md.
+// docs/NAV_QA.md.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');

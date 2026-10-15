@@ -12,7 +12,7 @@ skip with a reason.
 
 | File | Contents |
 |---|---|
-| `Polestar-<version>.zip` | `Polestar` (with `LICENSE` and a player `README.txt`), `Polestar_Guides`, `Polestar_QuestDB` / `Polestar_ItemDB` when built, and always `Polestar_Codex` (with its `LICENSE-DATA.txt`) |
+| `Polestar-<version>.zip` | `Polestar` (with `LICENSE` and a player `README.txt`), `Polestar_Guides`, always `Polestar_Nav` (Shortest Path Forever's walking router and maps by Cillian Berragan, with its own GPL-3.0-or-later `LICENSE`, `CREDITS.md` and `UPSTREAM.json`; `nav check` must pass), `Polestar_QuestDB` / `Polestar_ItemDB` when built, and always `Polestar_Codex` (with its `LICENSE-DATA.txt`) |
 | `Polestar_Recorder-<version>.zip` | `Polestar_Recorder` (optional, with `LICENSE`) |
 | `SHA256SUMS` | checksums of both zips, in the format `sha256sum -c` reads |
 
@@ -83,7 +83,8 @@ Replace `0.2.0` with the new version throughout.
    ```sh
    rm -rf dist && node tools/polestar.js pack
    (cd dist && sha256sum -c SHA256SUMS)
-   unzip -l dist/Polestar-0.2.0.zip      # Polestar_Codex/ and its LICENSE-DATA.txt are listed
+   unzip -l dist/Polestar-0.2.0.zip      # Polestar_Codex/ with its LICENSE-DATA.txt, and Polestar_Nav/ with its LICENSE and CREDITS.md, are listed
+   node tools/polestar.js nav check      # Polestar_Nav matches its UPSTREAM.json
    ```
 
 5. Smoke-test the zips as a player gets them: unpack both into an empty
@@ -115,7 +116,7 @@ Replace `0.2.0` with the new version throughout.
    ignored) on `next`, bring `main` up to it, tag and push both:
 
    ```sh
-   git add package.json guides/pack.json addon/Polestar addon/Polestar_Guides addon/Polestar_ItemDB addon/Polestar_Recorder
+   git add package.json guides/pack.json addon/Polestar addon/Polestar_Guides addon/Polestar_ItemDB addon/Polestar_Nav addon/Polestar_Recorder
    git commit -m "Release: 0.2.0"
    git switch main && git merge --ff-only next && git switch next
    git tag -a v0.2.0 -m "Polestar 0.2.0" main

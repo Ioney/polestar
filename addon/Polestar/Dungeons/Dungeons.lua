@@ -230,7 +230,7 @@ function Dungeons.GuideTo(key)
 end
 
 -- Through Compat.OpenWorldMap: the client's C_Map opener, never in combat
--- (the global OpenWorldMap taints the map: spf-issues C3).
+-- (the global OpenWorldMap taints the map: NAV_QA C3).
 function Dungeons.ShowOnMap(key)
 	local map = Dungeons.Entrance(key)
 	if not map then return false end

@@ -306,7 +306,7 @@ test('the minimap redraws only when something changed, and its line pool never s
 	assert.ok(out.limit <= 600);
 });
 
-test('spf-issues C4: in combat the world map pin is neither acquired nor released; the refresh waits for combat to end', () => {
+test('NAV_QA C4: in combat the world map pin is neither acquired nor released; the refresh waits for combat to end', () => {
 	const [out] = painted(`
 		local C = Polestar.Compat
 		function C.InCombat() return stub.inCombat and true or false end
@@ -332,7 +332,7 @@ test('spf-issues C4: in combat the world map pin is neither acquired nor release
 	assert.equal(out.released, true, 'and happens once combat ends');
 });
 
-test('spf-issues C5: a secret position or facing hides the minimap line, with no error', () => {
+test('NAV_QA C5: a secret position or facing hides the minimap line, with no error', () => {
 	const [out] = painted(`
 		local C = Polestar.Compat
 		-- The client's secret values cannot be faked in plain Lua: this facing reads as secret.
@@ -358,7 +358,7 @@ test('spf-issues C5: a secret position or facing hides the minimap line, with no
 	assert.ok(out.back > 0, 'back once it reads again');
 });
 
-test('spf-issues C12: a pooled line swapping between dot and stroke starts from the whole texture', () => {
+test('NAV_QA C12: a pooled line swapping between dot and stroke starts from the whole texture', () => {
 	const [out] = painted(`
 		Polestar.Set("nav.travel", false)
 		nav.viewRadius = 200
@@ -380,7 +380,7 @@ test('spf-issues C12: a pooled line swapping between dot and stroke starts from 
 	assert.deepEqual(out.coords, [0, 1, 0, 1]);
 });
 
-test('spf-issues K7: a zero-length lift leg (its shaft point twice) draws nothing and never divides by zero', () => {
+test('NAV_QA K7: a zero-length lift leg (its shaft point twice) draws nothing and never divides by zero', () => {
 	const [out] = strokes(`
 		local buf = S.New()
 		local lift = S.Path("tram", { { 0, 500, 500 }, { 0, 500, 500 } })
@@ -411,7 +411,7 @@ test('a multi-point boat draws straight along its points and never wraps to its 
 	assert.ok(near(out[1].x, 300) && near(out[1].y, 200));
 });
 
-test('spf-issues K8: a chokepoint stop wears its glyph; a hand-made stop (no choke) keeps the plain disc', () => {
+test('NAV_QA K8: a chokepoint stop wears its glyph; a hand-made stop (no choke) keeps the plain disc', () => {
 	const [out] = painted(`
 		local function pt(wx, wy) return { c = 0, wx = wx, wy = wy } end
 		local legs = {

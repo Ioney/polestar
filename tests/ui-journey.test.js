@@ -3,7 +3,7 @@
 // against the real Core + Theme + UI manifests, the fake Engine of
 // tests/lua/stub_ui.lua and a fake route: Nav.GetRoute, Nav.travel (Active,
 // Progress), Nav.prompts (the skip menu) and ns.Transit (departures).
-// Ids in test names are the rows of docs/superpowers/specs/2026-10-15-spf-issues.md.
+// Ids in test names are the rows of docs/NAV_QA.md.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');

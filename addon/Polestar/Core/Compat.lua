@@ -388,7 +388,7 @@ end
 -- opener, when it has one. The global OpenWorldMap called from addon code
 -- leaves the map frame tainted, so every later open in combat is blocked and
 -- the quest pins are lost until a reload (Shortest Path Forever 1.8.0, #92;
--- docs/superpowers/specs/2026-10-15-spf-issues.md C3); it is only the
+-- docs/NAV_QA.md C3); it is only the
 -- fallback on a client without C_Map.OpenWorldMap. Never in combat.
 --   Compat.CanOpenWorldMap() -> bool ; Compat.OpenWorldMap(uiMapID) -> opened
 local function worldMapOpener()

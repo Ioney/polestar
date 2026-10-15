@@ -313,7 +313,7 @@ test('route geometry: the walk carries the engine\'s path once in, the straight 
 });
 
 // ---------------------------------------------------------------------------
-// Chokepoint steps (docs/superpowers/specs/2026-10-15-spf-issues.md, K1-K8):
+// Chokepoint steps (docs/NAV_QA.md, K1-K8):
 // the walk the arrow is on is split where the engine's path passes a lift,
 // gate, bridge, tunnel, pass or a cave or building mouth.
 

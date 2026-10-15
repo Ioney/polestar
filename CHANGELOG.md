@@ -2,6 +2,96 @@
 
 ## 0.2.5 (unreleased)
 
+### For players
+
+- The arrow walks real paths: round cliffs, water and walls, through the
+  town gate and down into the mine instead of straight over the edge, thanks
+  to Shortest Path Forever by Cillian Berragan
+  (https://github.com/cjber/shortest-path-forever), whose walking maps and
+  router he kindly let Polestar use. They come in the new `Polestar_Nav`
+  folder of the zip (install it with the others). Options, Arrow & routes,
+  "Walk real paths" turns it off.
+- A walk is told step by step at the places it passes: "Walk to The Great
+  Lift, Bottom" then "Take The Great Lift", through a zone's gate or into a
+  cave by the zone data's or the guide's own words, each with its own time,
+  the arrow saying each as you reach it (bridges, gates and cave mouths
+  everywhere follow once the walking maps carry them). A cave or chain the
+  guide or the zone data
+  already describes keeps its own words, and a goal right after a guide's
+  "go to the mouth" step is still pointed at straight from the mouth, so the
+  arrow never leads onto the hill above a mine. As a ghost the route only
+  walks (no flights, boats or hearth) and the walk crosses water.
+- Dungeons' "Show on map" opens the world map the way the game's own buttons
+  do and never in combat: opening it from addon code left the map unable to
+  open in a fight, without its quest markers, until a reload (Shortest Path
+  Forever fixed the same in its 1.8.0).
+- Route lines on the world map and the minimap, drawn the way Shortest Path
+  Forever draws them: dots where you walk, following the real path, flights
+  along the way the flight master actually flies, boats, zeppelins and the
+  tram as solid lines, each in its kind's colour; the leg you are on is
+  strong and the legs after it fainter, and the dots stop short of each stop.
+  Gates, bridges, caves, lifts and passes the route passes through get their
+  own marks. Options, Arrow & routes, "Route lines" (on by default); the old
+  trail dots stand in while it is off.
+- When the route says to hearth or teleport, a button under the arrow casts
+  it (bindable: "Use the route's Hearthstone or teleport"); it appears,
+  moves and hides only out of combat. Right-click the arrow, or
+  `/polestar skipleg`, to mark a leg done; on a Hearthstone leg the rest of
+  the trip is planned without it. As in Shortest Path Forever. Options,
+  Arrow & routes, "Travel button".
+- Transport alerts: 30 seconds before your boat, zeppelin or tram comes in
+  while you wait at the dock, and 20 before the next stop on board, a small
+  banner with a countdown, the transport's own sound (the ship's bell, the
+  zeppelin's horn) on the Master channel and a flashing taskbar icon, each
+  with its own switch under Arrow & routes, "Along the route". Never for
+  lifts or in combat. After Shortest Path Forever's alerts.
+- The flight map marks the route's flight by its node ID (no longer fooled by
+  a similar name) and draws its hops to it in the accent, as Shortest Path
+  Forever does.
+- The journey in the guide window: under the step, every leg of the route
+  numbered with its own time, counting down ("1. Walk to The Great Lift,
+  Top 11:10", "2. Take The Great Lift, leaves in about 0:15 · ride 0:10"),
+  the total time and distance in its header and the destination under it.
+  The leg you are on is marked, finished legs drop off, and a click on the
+  header folds it to the totals; click the current leg to skip it. Shown
+  only when the route has more than one leg. After Shortest Path Forever's
+  journey tracker. Options, Arrow & routes, "Show the journey".
+- Go anywhere: Shift-click empty space on the world map or the minimap and
+  the arrow takes you there, routed like any goal and named after the zone;
+  Alt-click works over map icons too (a flight master, a dungeon entrance),
+  named after the icon. Click the same spot again to let it go. With a chat
+  box open, Shift-click still links into chat. Options, Arrow & routes,
+  "Shift-click a map to go there". After Shortest Path Forever.
+- Nearby services: `/polestar near repair` (or trainer, a profession such as
+  `mining`, class, reagents, vendor, innkeeper, bank, auction, flight,
+  stable) points the arrow at the quickest one to reach by the route, not
+  just the nearest as the crow flies. The world map's and minimap's tracking
+  menus list them under "Nearby services". After Shortest Path Forever.
+- Without TomTom installed, addons that set TomTom waypoints now point
+  Polestar's arrow, and `/way [zone] x y [title]` works (when no other addon
+  has it). With TomTom installed, "Follow TomTom's arrow" (off by default)
+  makes Polestar's arrow go wherever TomTom's points. Options, Arrow &
+  routes, Other waypoints. After Shortest Path Forever.
+- A point you picked before dying (a map click, `/way`, another addon's) comes
+  back once you are alive, instead of the arrow returning to the guide.
+- Boats, zeppelins, the Deeprun Tram and lifts run to their real timetables:
+  each loop's period and stops from the transport model the servers use
+  (accelerating, docking, the original servers' measured periods), so a
+  route weighs the real wait and ride. Ride one and Polestar times it from
+  where you are along the way ("Timed the Booty Bay - Ratchet from your
+  ride"); from then on, for six hours, the arrow says "Next boat in 1:20" or
+  "Boat docked, leaves in 0:40", and the route takes the boat you can
+  actually catch. Untimed, it says "Next boat in about 2:55". If you opt in
+  (Options, Arrow & routes, "Share boat times", off by default), the times
+  you take go to your guild and group on your realm, and theirs come to you.
+  After Shortest Path Forever by Cillian Berragan, whose timetables these
+  are.
+- Routes can start with a class teleport you know: a mage's Teleport to a
+  city (with a Rune of Teleportation in the bags), a druid's Teleport:
+  Moonglade, a shaman's Astral Recall to the bound inn, when off cooldown and
+  faster. The Darnassus and Rut'theran Village portals are part of routes
+  too. Options, Arrow & routes, "Class teleports".
+
 ### For guide authors
 
 - `node tools/polestar.js planner` opens the route planner in the browser:
@@ -50,6 +140,88 @@
   playback clock on the simulator's priors (`timeline.js`), and the map art
   pipeline (`art/`: a wago.tools CASC file cache, BLP2 and BC1 decoding, a BC1
   encoder, the minimap pyramid and the unfogged zone art), each with tests.
+- `Nav/Prompts.lua` (the travel button, `Nav.prompts`; its own combat queue,
+  as `QoL.Secure`), `Nav/Alerts.lua` (`Nav.alerts`, reads `ns.Transit`) and
+  `QoL/Flight.lua`'s `Flight.RouteFlight`, `SlotOf` and `DrawRoute` adapt
+  Shortest Path Forever's `UI/Arrow.lua` cast prompt, `Journey.lua`
+  `SkipJourneyStep`, `UI/Alert.lua` and `Transport/Taxi.lua`; tested by
+  `tests/nav-prompts.test.js` with secure frames enforced in combat.
+- `Nav/Journey.lua` (map-click planning, `Polestar.Nav.API` for other
+  addons: `Estimate`, `Navigate`, `Cancel`, `Active`; the TomTom stand-in,
+  following TomTom's arrow and `/way`) and `Nav/Nearby.lua` (nearby
+  services) adapt Shortest Path Forever's `Journey/JourneyInput.lua`,
+  `Core/API.lua`, `Core/TomTom.lua`, `Core/Way.lua` and `UI/Nearby.lua`;
+  docs/ARCHITECTURE.md, "Nav API". `Pins.MinimapCursor()` and
+  `Pins.MinimapView()` read the minimap's view; `qol build` adds
+  `reagentVendors` to `QoL/Data.lua`. `tests/syntax.test.js` lets only
+  `Nav/Journey.lua` write the `TomTom` global. Tested by
+  `tests/nav-journey.test.js` (NAV_QA rows 7, 8, 9, C11, C13, C14).
+- `addon/Polestar_Nav` vendors Shortest Path Forever's router
+  (`Routing/PathGrid.lua`, `Path.lua`, `PathJobs.lua`) and walking maps
+  (`Nav/`) at v1.15.0 (ba60bce), GPL-3.0-or-later with Cillian Berragan's
+  copyright (`LICENSE`, `CREDITS.md`). The only changes are mechanical: the
+  data global `ShortestPathForeverPathData` becomes `PolestarPathData`, each
+  file names its upstream file and commit. `API.lua` hands the engine to
+  Polestar as `Polestar_NavEngine` (upstream's `Find`, `FindCost`,
+  `FindMany`, `Cancel`, `Busy`, plus `Available(map)`). It always reads its
+  own `PolestarPathData`, never an installed Shortest Path Forever's tables:
+  his engine evicts decoded entries from them while ours may be searching.
+  With both installed each holds its maps.
+- `node tools/polestar.js nav vendor <checkout>` redoes the copy from a newer
+  upstream commit (only `Nav<name>.lua` map files; each header carries his
+  copyright and the dated notice GPLv3 section 5a asks for) and writes
+  `UPSTREAM.json` (repo, commit, version, vendored date, every file's
+  sha256); `nav check` and `tests/nav-vendor.test.js` check the
+  folder against it, and the test walks Goldshire to the Fargodeep Mine mouth
+  with the real maps (decoded by `tests/lua/stub_encoding.lua`, a plain-Lua
+  `C_EncodingUtil`), with checks from
+  `docs/NAV_QA.md` (C2 cancelled searches,
+  C6 Stormwind double-backs, C17 frame slicing, and a Shortest Path Forever
+  copy trimmed mid-search leaving ours untouched).
+- `Compat.OpenWorldMap(uiMapID)` and `Compat.CanOpenWorldMap()` open the
+  world map through `C_Map.OpenWorldMap` (the global `OpenWorldMap` only on a
+  client without it), never in combat; `Dungeons.ShowOnMap` uses them, and
+  `tests/compat.test.js` rejects any other addon code that opens or moves the
+  world map itself (NAV_QA C3).
+- `pack` and `install` ship `Polestar_Nav` with Polestar and Polestar_Guides,
+  and Polestar checks its version at login like the data packs'.
+- `Nav/Walk.lua` follows `Polestar_NavEngine`'s paths: only the walk the
+  arrow is on is searched (`Path.Find`, cancelled on a new goal, asked again
+  25 yd off the path, never in combat), hand-made walks (crossings, chains,
+  a goal after a guide `goto`) stay straight, and every failure falls back
+  to the straight arrow; it splits that walk at Polestar_Nav's chokepoints
+  (`Travel.SplitWalk`: pieces with `step`, `choke`, lift rides of kind
+  `lift`) and publishes `Nav.GetRouteGeometry()`. `Travel.lua` plans
+  timetabled waits (from when the player reaches the dock), class
+  teleports, one-way portals and walk-only ghost routes, adds `yards`,
+  `stops`, `item`/`spell`, `Travel.SkipLeg()` and `Travel.Progress()`; option
+  `nav.navRouting`. Tested by `tests/nav-spf.test.js` (fake engine; NAV_QA
+  C1, C2, K1-K8) and `tests/travel-transit.test.js` (2, 3, 11, C9, C11, C15).
+- `Maps/RouteStrokes.lua` (route-line geometry) and `Maps/RouteLines.lua`
+  (the world map pin and minimap painters) port Shortest Path Forever's
+  `UI/Strokes.lua`, `UI/FlightLines.lua` and `UI/Route.lua`; they draw
+  `Nav.GetRouteGeometry()` and are tested by `tests/nav-route-lines.test.js`
+  (dot spacing across bends, stop gaps, receding legs, flight tracks, pool
+  bounds, no allocation per draw). `travel build` also writes
+  `Maps/FlightPaths.lua`, each flight's TaxiPathNode track simplified to
+  10 yd (`--flight-lua`). `tests/lua/wow_stub.lua` gains Line regions.
+- New glyphs `icon-gate`, `icon-bridge`, `icon-cave`, `icon-lift` and
+  `icon-pass` (`tools/media/ui.js`) mark chokepoints on the route's stops
+  (a Travel leg's `choke = { kind, name }`).
+- `Nav/Transit.lua` (`Polestar.Transit`: `NextDeparture`, `NextArrival`,
+  `Caption`, `Riding`, `Lifts`, `LiftNear`, `Teleports`; `NAV_TRANSIT`)
+  ports Shortest Path Forever's `Transport/Model.lua`, `Timetable.lua`,
+  `Observer.lua`, `Sync.lua` and `Teleports.lua`; docs/ARCHITECTURE.md,
+  "Timetables, portals and teleports". `travel build` writes the timetables,
+  portals and class teleports into TravelData.lua
+  (`tools/lib/travel/timetable.js`, after his `gen_routes.py` and
+  `gen_transit.py`: the CMaNGOS transport model over TaxiPathNode,
+  TransportAnimation tracks, spell tables) from the Forever client tables
+  and CMaNGOS classic-db (`tools/lib/travel/cmangos.js`, cached in
+  `data/sources/cmangos/`); transports' `ab`/`ba`/`waitA`/`waitB` now come
+  from the timetable. `Compat.GetPlayerUnitPosition()` is the one reader of
+  `UnitPosition`, `Compat.GetSpellCooldown()` reads spell cooldowns. Tested
+  by `tests/nav-transit.test.js` (NAV_QA C5, C9, K3, 11).
 
 ## 0.2.4 (unreleased)
 

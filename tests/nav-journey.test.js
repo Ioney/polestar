@@ -5,7 +5,7 @@
 // handing a picked point back. Runs Core/Init.lua + Nav/Nav.xml against
 // tests/lua/stub_nav.lua, plus a continent map, a world map canvas with click
 // handlers and mouse foci. Test names cite the rows of
-// docs/superpowers/specs/2026-10-15-spf-issues.md they guard.
+// docs/NAV_QA.md they guard.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');

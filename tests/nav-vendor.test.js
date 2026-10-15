@@ -3,7 +3,7 @@
 // Berragan, GPL-3.0-or-later), vendored by `nav vendor` (tools/lib/nav/vendor.js).
 // The vendored files match UPSTREAM.json and the transform, the transform is
 // idempotent, and the addon loads and finds real walking routes on its own
-// PolestarPathData. Checks from docs/superpowers/specs/2026-10-15-spf-issues.md
+// PolestarPathData. Checks from docs/NAV_QA.md
 // name their row (C2, C6, C17, and the shared-tables hazard at its top).
 
 const { test } = require('node:test');

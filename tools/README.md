@@ -61,16 +61,17 @@ without QuestieDB.
 | `profession build` | Builds `data/forever/professions.json`; `profession draft <Profession>` drafts a 1-300 crafting guide; `profession gathering build` / `check` writes or checks the six generated gathering and secondary guides |
 | `exploration build` / `exploration check` | Writes or checks the exploration guides in `guides/forever/exploration` |
 | `trainers build` | Builds `data/forever/trainers.json` and `Core/ClassTrainers.lua` |
-| `travel build` | Builds the travel network: `data/forever/travel.json`, `Nav/TravelData.lua`, `Polestar_Travel`; `travel route` runs the in-game planner between two points; `travel chain` drafts an approach chain from recorded walks |
+| `travel build` | Builds the travel network: `data/forever/travel.json`, `Nav/TravelData.lua` (with the boat, zeppelin, tram and lift timetables, walk-in portals and class teleports `Nav/Transit.lua` reads), the flights' tracks (`Maps/FlightPaths.lua`), `Polestar_Travel`; `travel route` runs the in-game planner between two points; `travel chain` drafts an approach chain from recorded walks |
 | `nav build` / `nav path` | The navigation grid in `data/local/nav`: where a character can walk, climb, fall, swim and ride lifts, built from the Forever client's terrain, water and model collision (local only); `nav path` prints the route between two map points |
 | `nav aids` | The arrow's zone crossings, open borders and approach chains generated from the navigation grid (`nav build`) into `data/local/nav/aids.json` (crossings schema); `--report` measures the arrow on every guide leg without and with them; `--lua <file>` writes a Crossings.lua for a local test |
 | `maps build` / `maps overlays` | Zone level ranges (`Maps/ZoneLevels.lua`) / zone art overlays (`UI/ZoneArtOverlays.lua`) |
-| `qol build` | Spirit healers and flight masters (`QoL/Data.lua`) |
+| `qol build` | Spirit healers, flight masters and reagent vendors (`QoL/Data.lua`) |
 | `itemdb build` | The `Polestar_ItemDB` item stats (`Items.lua`) |
 | `gear build` / `gear fetch` | Forever item stats, reward choices and stat weight bands / refresh the cached sims |
 | `questdb build` | The `Polestar_QuestDB` data addon |
 | `codex build` | Lookup's Codex: `data/forever/codex/*.json` and the `Polestar_Codex` data addon |
 | `codex parity` | The release Codex against the last `--local-extras` build, per kind: `data/local/codex-parity.{json,md}` |
+| `nav vendor <checkout>` / `nav check` | `addon/Polestar_Nav` from a Shortest Path Forever checkout (Cillian Berragan's walking router and maps, GPL-3.0-or-later): `Routing/`, `Nav/`, `UPSTREAM.json` / checks the folder against `UPSTREAM.json` |
 | `media` | Regenerates the addon's textures from `tools/media/*.js` |
 | `readme brand` / `readme charts` | Redraws the README's art: the banners, emblem, logo, download and CurseForge buttons and the CurseForge avatar / the route charts (needs `data/sim`); both also export the CurseForge listing's PNGs when `rsvg-convert` is installed |
 
@@ -115,7 +116,7 @@ The release steps are in [docs/RELEASING.md](../docs/RELEASING.md).
 | `itemdb/` | `itemdb build`: item stats from the client tables |
 | `lua.js` | Runs Lua 5.1 for the tools (reading SavedVariables and other addons' data) |
 | `maps/` | `maps build` (zone levels) and `maps overlays` |
-| `nav/` | `nav build`: `geom/` reads the client's terrain, liquids and WMO/M2 collision per map tile; `grid/` rasterises them into walkable surfaces, walls, links (steps, slopes, falls, swims, lifts), regions and the per-tile graph; `path.js` snaps points and routes on it; `move.js` the movement profiles; `aids.js` and `arrow.js` the arrow's generated crossings and their measurement |
+| `nav/` | `nav build`: `geom/` reads the client's terrain, liquids and WMO/M2 collision per map tile; `grid/` rasterises them into walkable surfaces, walls, links (steps, slopes, falls, swims, lifts), regions and the per-tile graph; `path.js` snaps points and routes on it; `move.js` the movement profiles; `aids.js` and `arrow.js` the arrow's generated crossings and their measurement. `nav vendor`: `vendor.js`, the mechanical transform of Shortest Path Forever's router and maps, and the `UPSTREAM.json` check |
 | `pack/` | The pack contract: which pack a command works on, `pack.json`, building a pack and the format constants |
 | `paths.js` | The repository's folders (`ROOT`, `DATA` for `data/forever`, `SOURCES` for `data/sources`); every tool resolves paths from them |
 | `planner/` | The route planner's library: `geo.js` (world and map coordinates), `timeline.js` (the playback clock, XP, quest log and track; walk legs and the hops between spawns through a route provider, flights along their taxi path points), `source.js` and `goalfmt.js` (structured edits of `.guide` text), `art/` (wago.tools CASC cache, BLP and BC1, the minimap pyramid and zone art) |
@@ -148,8 +149,9 @@ file's language written by `header()` in `lib/generated.js`:
 | `data/forever/professions.json` | `profession build` | client tables, `data/forever` items, npcs, objects | local | none |
 | `data/forever/trainers.json` | `trainers build` | `train` goals under `guides/`, `data/recordings`, the curated list, `npcs.json` | local | none |
 | `addon/Polestar/Core/ClassTrainers.lua` | `trainers build` | the same | yes | rerun |
-| `data/forever/travel.json` | `travel build` | client tables, `data/forever` map-frames, zones, npcs, objects, `data/recordings` | local | none |
-| `addon/Polestar/Nav/TravelData.lua` | `travel build` | the same | yes | rerun; `tests/travel-build.test.js` loads the committed file |
+| `data/forever/travel.json` | `travel build` | client tables (Era and Forever), CMaNGOS classic-db (`data/sources/cmangos/`), `data/forever` map-frames, zones, npcs, objects, `data/recordings` | local | none |
+| `addon/Polestar/Nav/TravelData.lua` | `travel build` | the same | yes | rerun; `tests/travel-build.test.js` loads the committed file; `tests/nav-transit.test.js` builds and loads the timetables |
+| `addon/Polestar/Maps/FlightPaths.lua` | `travel build` | client TaxiPathNode | yes | rerun; `tests/nav-route-lines.test.js` loads the committed file |
 | `addon/Polestar_Travel/` | `travel build` | the local crossings file `data/local/crossings.json` | local | `tests/travel-crossings.test.js` validates the crossings file |
 | `addon/Polestar/Maps/ZoneLevels.lua` | `maps build` | `data/forever` npcs, zones | yes | `tests/maps-zonelevels.test.js` ("up to date") |
 | `addon/Polestar/UI/ZoneArtOverlays.lua` | `maps overlays` | Forever client tables (wago.tools) | yes | rerun |
@@ -158,6 +160,7 @@ file's language written by `header()` in `lib/generated.js`:
 | `addon/Polestar_ItemDB/Forever.lua` and `LICENSE-DATA.txt`, `addon/Polestar/Gear/SpecData.lua` and `LICENSE-DATA.txt`; `data/forever/gear/report.json` | `gear build`, after `itemdb build` | the installed ForeverLevelingBiS, the sims cached in `data/sources/wowsims` (`gear fetch`) | yes; the report is local | rerun |
 | `addon/Polestar_QuestDB/` | `questdb build` | `data/forever` quests, npcs, objects, items, map-frames | local; ships in the release zip when built | `tests/questdb.test.js` loads it within its budget |
 | `data/forever/codex/*.json`, `addon/Polestar_Codex/` (with `LICENSE-DATA.txt`) | `codex build` | the installed ForeverLevelingBiS; `data/forever` including instances, trainers and professions; Forever and Era client tables; our guides. `--local-extras` adds AtlasLoot, RareScanner and `dungeons.json` (local-only) | local; always in the release zip (`pack` fails without a release-safe one) | `tests/lookup-codex.test.js` loads it in game |
+| `addon/Polestar_Nav/Routing/`, `Nav/`, `UPSTREAM.json` | `nav vendor <checkout>` | a git checkout of https://github.com/cjber/shortest-path-forever | yes (vendored; always in the release zip) | `nav check`; `tests/nav-vendor.test.js` |
 | `guides/forever/exploration/*.guide` (7) | `exploration build` | client map tables, `data/forever` zones, map-frames, travel | yes | `exploration check`; `tests/exploration.test.js` |
 | `guides/forever/professions/` mining, herbalism, skinning, cooking, first-aid, fishing | `profession gathering build` | `data/forever` professions, items, npcs, objects | yes | `profession gathering check`; `tests/profession-gathering.test.js` |
 | `guides/forever/professions/` alchemy, blacksmithing, enchanting, engineering, leatherworking, tailoring | `profession draft <Profession> --out` | `data/forever` including professions | yes | rerun |

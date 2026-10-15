@@ -233,7 +233,7 @@ test('secret unit values read as unknown instead of throwing', () => {
 	assert.deepEqual(out, { npc: false, target: 197, faction: 'Neutral', race: 'Human' });
 });
 
-test('C3 (spf-issues): the world map opens through C_Map.OpenWorldMap when the client has it, the global opener only as a fallback, never in combat', () => {
+test('C3 (NAV_QA): the world map opens through C_Map.OpenWorldMap when the client has it, the global opener only as a fallback, never in combat', () => {
 	const [out] = run(`
 		local calls = {}
 		OpenWorldMap = function(map) calls[#calls + 1] = "global " .. tostring(map) end
@@ -258,7 +258,7 @@ test('C3 (spf-issues): the world map opens through C_Map.OpenWorldMap when the c
 	assert.equal(out.calls, 'C_Map 1429;global 1411', 'C_Map first; the global only without it');
 });
 
-test('C3 (spf-issues): no addon code outside Core/Compat.lua opens or moves the world map itself (OpenWorldMap, ToggleWorldMap, ShowUIPanel(WorldMapFrame), WorldMapFrame:SetMapID)', () => {
+test('C3 (NAV_QA): no addon code outside Core/Compat.lua opens or moves the world map itself (OpenWorldMap, ToggleWorldMap, ShowUIPanel(WorldMapFrame), WorldMapFrame:SetMapID)', () => {
 	const fs = require('node:fs');
 	const path = require('node:path');
 	const { ADDONS } = require('./helpers/lua');

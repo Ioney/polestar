@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polestar Planner</title>
+<link rel="icon" type="image/png" href="/emblem.png?px=64">
+<link rel="preload" href="/fonts/Inter-Medium.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/fonts/Inter-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+</head>
+<body>
+<div id="app">
+	<header id="topbar"></header>
+	<main id="main">
+		<aside id="steps-panel" class="panel">
+			<div class="panel-head"><h2>Steps</h2><span class="spacer"></span><span class="count" id="steps-count"></span></div>
+			<div class="legend" id="steps-legend"></div>
+			<div id="steps" class="vlist" tabindex="-1"><div class="vlist-pin"></div><div class="vlist-spacer"></div></div>
+		</aside>
+		<section id="map-panel" class="panel">
+			<div class="map-wrap" id="map-wrap"><canvas id="map" tabindex="0" aria-label="Route map"></canvas></div>
+			<div class="map-head" id="map-head"></div>
+			<div class="map-banner" id="map-banner"></div>
+		</section>
+		<aside id="side-panel" class="panel"></aside>
+	</main>
+	<footer id="transport"></footer>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<div class="boot" id="boot"><span class="emblem"></span>Loading the planner…</div>
+</body>
+</html>

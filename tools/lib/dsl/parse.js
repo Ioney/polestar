@@ -8,6 +8,13 @@
 //   goal  = { line, verb, zone, note, ...positional/modifier fields }
 // `zone` on a goal is the zone spec in effect ({ name } | { map }, with line),
 // shared by every goal under the same header/step `zone` line.
+// Each goal also carries a non-enumerable `spans` (character offsets into its
+// line, [start, end)) for editors (tools/lib/planner/source.js):
+//   { verb: [s, e], positional: [s, e] | null, coords: [s, e] | null,
+//     mods: [{ mod, start, end, text? }], note: [s, e] | null, comment: [s, e] | null }
+// `coords`: the goto/explore positional coordinates or the whole `@x,y`
+// modifier; `mods` names each modifier as MODS does (`text` on `only`: its
+// condition list as written); `note` runs from the ` -- ` dashes.
 
 const { lexLine } = require('./lexer');
 const { parseConditions, FACTIONS } = require('./conditions');
@@ -113,7 +120,7 @@ const STANDINGS = { hated: 1, hostile: 2, unfriendly: 3, neutral: 4, friendly: 5
 function readStanding(tok) {
 	if (!tok || tok.quoted) return null;
 	const word = tok.text.toLowerCase();
-	if (STANDINGS[word]) return { value: STANDINGS[word] };
+	if (Object.hasOwn(STANDINGS, word)) return { value: STANDINGS[word] };
 	if (!INT_RE.test(tok.text)) return null;
 	const n = Number(tok.text);
 	return n >= 1 && n <= 8 ? { value: n } : { error: `standing ${tok.text} is out of range (1-8, or Hated..Exalted)` };
@@ -262,7 +269,7 @@ function parseGuide(text, file, diag) {
 			}
 			continue;
 		}
-		if (!kw || !MODS[kw]) {
+		if (!kw || !Object.hasOwn(MODS, kw)) {
 			err(ln, toks[0].quoted ? 'expected a verb, found a string' : `unknown verb "${toks[0].text}"`, `verbs: ${VERBS.join(', ')}`);
 			continue;
 		}
@@ -472,7 +479,7 @@ function parseId(tok, what, ln, err) {
 
 // Positional arguments per verb. Returns the index of the first modifier
 // token, or -1 after reporting an error.
-function parsePositional(verb, goal, toks, line, lex, ln, err) {
+function parsePositional(verb, goal, toks, line, lex, ln, err, spans) {
 	let i = 1;
 	const t = toks[i];
 	const quotedAt = (k) => toks[k] && toks[k].quoted;
@@ -566,6 +573,7 @@ function parsePositional(verb, goal, toks, line, lex, ln, err) {
 			goal.y = c.y;
 			goal.explicitCoords = true;
 			i = c.next;
+			spans.coords = [toks[1].start, toks[i - 1].end];
 			if (quotedAt(i)) goal.text = toks[i++].text;
 			return i;
 		}
@@ -654,6 +662,7 @@ function parsePositional(verb, goal, toks, line, lex, ln, err) {
 			goal.y = c.y;
 			goal.explicitCoords = true;
 			i = c.next;
+			spans.coords = [toks[1].start, toks[i - 1].end];
 			if (quotedAt(i)) goal.text = toks[i++].text;
 			return i;
 		}
@@ -672,12 +681,27 @@ function parsePositional(verb, goal, toks, line, lex, ln, err) {
 function parseGoal(verb, line, lex, ln, err, warn) {
 	const toks = lex.tokens;
 	const goal = { line: ln, verb };
+	const contentEnd = line.replace(/\s+$/, '').length;
+	const tail = lex.end < contentEnd ? [lex.end, contentEnd] : null;
+	const spans = { verb: [toks[0].start, toks[0].end], positional: null, coords: null, mods: [], note: lex.note !== null ? tail : null, comment: lex.note === null ? tail : null };
 	if (lex.note !== null) {
 		if (!lex.note) return err(ln, 'empty ` -- ` note'), null;
 		goal.note = lex.note;
 	}
-	let i = parsePositional(verb, goal, toks, line, lex, ln, err);
+	let i = parsePositional(verb, goal, toks, line, lex, ln, err, spans);
 	if (i < 0) return null;
+	if (i > 1) spans.positional = [toks[1].start, toks[i - 1].end];
+	// The modifier being read (named by `use`) and its first token.
+	let cur = null;
+	let curStart = i;
+	const flush = () => {
+		if (!cur) return;
+		const span = { mod: cur, start: toks[curStart].start, end: toks[i - 1].end };
+		if (cur === 'only') span.text = line.slice(toks[curStart + 1].start, span.end);
+		if (cur === 'at') spans.coords = [span.start, span.end];
+		spans.mods.push(span);
+		cur = null;
+	};
 	const allowed = MODS[verb];
 	const seen = new Set();
 	const use = (mod) => {
@@ -690,6 +714,7 @@ function parseGoal(verb, line, lex, ln, err, warn) {
 			return false;
 		}
 		seen.add(mod);
+		cur = mod;
 		return true;
 	};
 	const intArg = (k, what) => {
@@ -702,6 +727,8 @@ function parseGoal(verb, line, lex, ln, err, warn) {
 	};
 	let ok = true;
 	while (i < toks.length && ok) {
+		flush();
+		curStart = i;
 		const tok = toks[i];
 		if (tok.quoted) {
 			if (!use('text')) return null;
@@ -875,10 +902,12 @@ function parseGoal(verb, line, lex, ln, err, warn) {
 		ok = false;
 	}
 	if (!ok) return null;
+	flush();
 	if (goal.count !== undefined && goal.untilSkill !== undefined) return err(ln, 'use either `xN` or `until <N>`, not both'), null;
 	if (goal.nearest && goal.npc !== undefined) return err(ln, '`nearest` picks the NPC at runtime; drop `npc`, or drop `nearest` to keep that NPC'), null;
 	if (goal.classTrain && goal.npc !== undefined) return err(ln, '`train class` picks the trainer at runtime; drop `npc`'), null;
+	Object.defineProperty(goal, 'spans', { value: spans, enumerable: false, writable: true, configurable: true });
 	return goal;
 }
 
-module.exports = { parseGuide, VERBS, MODS, MOD_WORDS, HEADER_KEYS, STEP_KEYS, ID_RE };
+module.exports = { parseGuide, VERBS, MODS, MOD_WORDS, HEADER_KEYS, STEP_KEYS, ID_RE, RANKS, QUALITIES, STANDINGS };

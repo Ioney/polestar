@@ -360,15 +360,101 @@ test('security L6: estimates evict the oldest entry instead of wiping the cache,
 		local t = 0
 		debugprofilestop = function() t = t + 30 return t end
 		N.EstimateTravel(nil, at(1))
-		local first, why = N.EstimateTravel(nil, at(2))
+		local first, why = N.EstimateTravel(nil, at(2), true)
 		r.busy = { first == nil, why }
 		stub.advance(0.02)
-		r.nextFrame = select(2, N.EstimateTravel(nil, at(2))) ~= "busy"
+		r.nextFrame = select(2, N.EstimateTravel(nil, at(2), true)) ~= "busy"
 		emit(r)`);
 	assert.equal(out.oldestGone, 1);
 	assert.equal(out.othersKept, 0);
 	assert.deepEqual(out.busy, [true, 'busy']);
 	assert.equal(out.nextFrame, true);
+});
+
+test('second review P2: a ranking burst past the estimate budget still compares full plans only', () => {
+	const [out] = run(`
+		known(1, 2)
+		nav.place(0, 700)
+		local function place(id, wx, wy)
+			local m, x, y = nav.mapPoint(wx, wy)
+			return { id = id, c = 0, wx = wx, wy = wy, map = m, x = x, y = y }
+		end
+		-- Nearer in a straight line: a long walk. Farther: a short flight away.
+		local walk, flight = place(1, 900, 700), place(2, 0, -780)
+		-- Every plan "takes" 30 ms (the planner's own clock checks see no time pass).
+		local t, plan = 0, N.PlanRoute
+		debugprofilestop = function() return t end
+		N.PlanRoute = function(p) local legs, why = plan(p) t = t + 30 return legs, why end
+		local seen = {}
+		local best = N.nearby.Rank({ walk, flight }, { c = 0, wx = 0, wy = 700 }, function(p)
+			local s = N.journey.Estimate(nil, p)
+			seen[#seen + 1] = s
+			return s
+		end)
+		stub.advance(10)
+		emit({ best = best.id, seen = seen, planned = { N.EstimateTravel(nil, walk), N.EstimateTravel(nil, flight) } })`);
+	assert.equal(out.seen.length, 2);
+	assert.deepEqual(out.seen, out.planned, 'both candidates got the planner\'s answer, not a straight line');
+	assert.ok(out.planned[1] < out.planned[0], 'the flight is the quicker one');
+	assert.equal(out.best, 2);
+});
+
+test('second review P2: API.Estimate answers "busy" past the budget and a number the next frame', () => {
+	const [out] = run(`
+		nav.place(0, 0)
+		local function at(i) local m, x, y = nav.mapPoint(-900 + i * 10, -500) return m, x / 100, y / 100 end
+		local t, plan = 0, N.PlanRoute
+		debugprofilestop = function() return t end
+		N.PlanRoute = function(p) local legs, why = plan(p) t = t + 30 return legs, why end
+		local r = {}
+		r.first = type(N.API.Estimate(nil, nil, nil, at(1))) == "number"
+		local s, why = N.API.Estimate(nil, nil, nil, at(2))
+		r.busy = { s == nil, why }
+		local m, x, y = at(3)
+		r.internal = type(N.EstimateTravel(nil, { map = m, x = x * 100, y = y * 100 })) == "number"
+		stub.advance(0.02)
+		r.nextFrame = type(N.API.Estimate(nil, nil, nil, at(2))) == "number"
+		emit(r)`);
+	assert.equal(out.first, true, 'the frame\'s first estimate is planned');
+	assert.deepEqual(out.busy, [true, 'busy'], 'no straight line stands in for it');
+	assert.equal(out.internal, true, 'Polestar\'s own estimates are never refused');
+	assert.equal(out.nextFrame, true);
+});
+
+test('second review P3: the arrow and the panel count down alike while waiting at a dock', () => {
+	const [out] = run(`
+		nav.place(400, 0, 1)
+		target(-800, 100, "Docks quest")
+		local leg = T.CurrentLeg()
+		local before = T.Remaining(nil)
+		stub.advance(20)
+		local s = T.Progress()
+		local secs = math.floor(T.Remaining(nil) + 0.5)
+		emit({ kind = leg.kind, waited = before - T.Remaining(nil), agree = T.Remaining(nil) - (s + leg.rest),
+			mode = Polestar.Nav.arrow.GetMode(), eta = Polestar.Nav.arrow.etaText:GetText(),
+			want = string.format("%d:%02d total", math.floor(secs / 60), secs % 60) })`);
+	assert.equal(out.kind, 'boat');
+	assert.equal(out.waited, 20);
+	assert.equal(out.agree, 0, 'Remaining is Progress plus the legs after it');
+	assert.equal(out.mode, 'instruction');
+	assert.equal(out.eta, out.want, 'the arrow shows the countdown');
+});
+
+test('second review P3: a flight counts down from take-off, not from reaching the flight master', () => {
+	const [out] = run(`
+		known(1, 2)
+		nav.place(0, 790)
+		target(0, -780, "Kobolds")
+		local leg = T.CurrentLeg()
+		stub.advance(30)                       -- talking to the flight master
+		nav.taxi = true
+		Polestar.Nav.Refresh()
+		stub.advance(10)
+		emit({ kind = leg.kind, seconds = leg.seconds, left = T.Progress(), remaining = T.Remaining(nil) - leg.rest })`);
+	assert.equal(out.kind, 'fly');
+	assert.ok(out.seconds > 40, 'a flight long enough to tell');
+	assert.equal(out.left, out.seconds - 10);
+	assert.equal(out.remaining, out.seconds - 10);
 });
 
 test("review P3-10: the arrow dial shows the leg's own glyph for a teleport", () => {

@@ -29,7 +29,9 @@
 --   Walk.Left(c, x, y) -> yards left along the path to that goal at the last Aim | nil
 --   Walk.Passed(c, x, y, seg) -> the player is past segment `seg` of that goal's path
 --   Walk.Stops(pc, px, py) -> stops, total: the chokepoints along the path
---   Walk.Split(): Travel.SplitWalk at them (on each path, and after a fresh plan)
+--   Walk.Split(): Travel.SplitWalk at them (on each path, and after a fresh plan);
+--     with none, the walk leg takes the path's yards and time, and goes back
+--     to its straight estimate when the path fails or is cleared (Travel.RestoreWalk)
 --   Walk.FollowsGoto(target) -> true when the guide's last located goal before
 --     this target is a `goto`
 --   Walk.Clear()
@@ -118,11 +120,20 @@ local function cancel()
 	end
 end
 
+-- The walk the path measured goes back to its straight estimate (Travel.RestoreWalk).
+local function restore(c, x, y)
+	local T = Nav.travel
+	if c and T and T.RestoreWalk then T.RestoreWalk(c, x, y) end
+end
+
 function Walk.Clear()
-	local had = gc ~= nil
+	local had, c, x, y = gc ~= nil, gc, gx, gy
 	cancel()
 	gc, gx, gy, count, idx, wanted, failed = nil, nil, nil, 0, 1, false, false
-	if had then changed() end
+	if had then
+		restore(c, x, y)
+		changed()
+	end
 end
 
 local function took(points)
@@ -181,6 +192,7 @@ local function ask(P, pc, px, py)
 		else
 			failed, failAt, failX, failY = true, GetTime(), px, py
 			count = 0
+			restore(gc, gx, gy)
 		end
 		changed()
 	end, ghost) -- a ghost walks on water

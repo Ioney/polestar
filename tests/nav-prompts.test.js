@@ -181,11 +181,11 @@ test('travel button: a teleport leg casts its spell when known; an item leg uses
 	assert.deepEqual(out[2], { exists: true, shown: true, type1: 'item', item: 'item:17690', spell: false });
 });
 
-test('skip leg (issues 11): the menu names the hearth or the leg; class teleports still prompt; the last leg and no route have none', () => {
+test('skip leg (issues 11): the hearth and the flight offer a skip; class teleports still prompt; the last leg and no route have none', () => {
 	const out = runNav(`
 		nav.items[6948] = 1
 		emit(P.MenuItems() == nil)
-		local FLY = { kind = "fly", label = "Fly to East Hold", from = {}, to = { id = 2 } }
+		local FLY = { kind = "fly", label = "Fly to East Hold", from = { id = 1 }, to = { id = 2 } }
 		setRoute({ HEARTH, FLY, WALK })
 		local items = P.MenuItems()
 		emit(items[1].text)
@@ -203,12 +203,34 @@ test('skip leg (issues 11): the menu names the hearth or the leg; class teleport
 		emit(state().type1)
 	`);
 	assert.equal(out[0], true);
-	assert.equal(out[1], 'Skip the Hearthstone');
+	assert.equal(out[1], 'Skip this leg');
 	assert.deepEqual(out[2], [1, 2, false]);
-	assert.equal(out[3], 'Mark this leg done');
+	assert.equal(out[3], 'Skip this leg');
 	assert.deepEqual(out[4], [2, 3, true]);
 	assert.equal(out[5], 2);
 	assert.equal(out[6], 'spell');
+});
+
+test('second review P3: legs that replan when skipped offer "Skip this leg"; walks and lifts "Mark this leg done"', () => {
+	const [out] = runNav(`
+		local function row(leg)
+			setRoute({ leg, WALK })
+			local items = P.MenuItems()
+			return items[1].text .. " / " .. items[1].tip
+		end
+		local to = { c = 0, wx = 900, wy = 0 }
+		emit({
+			hearth = row(HEARTH),
+			teleport = row({ kind = "teleport", spell = 3565, label = "Teleport", to = to }),
+			fly = row({ kind = "fly", label = "Fly", from = { id = 1 }, to = { id = 2 } }),
+			boat = row({ kind = "boat", transport = { id = "boat-test" }, side = "a", label = "Boat", from = to, to = to }),
+			portal = row({ kind = "portal", transport = { id = "portal-test" }, label = "Portal", from = to, to = to }),
+			walk = row({ kind = "walk", label = "Walk to the lift", to = to }),
+			lift = row({ kind = "lift", lift = 7, side = "top", label = "Take the lift", from = to, to = to }),
+		})`);
+	const SKIP = 'Skip this leg / Plans the rest of this trip without it.';
+	const DONE = 'Mark this leg done / The arrow moves on to the next leg.';
+	assert.deepEqual(out, { hearth: SKIP, teleport: SKIP, fly: SKIP, boat: SKIP, portal: SKIP, walk: DONE, lift: DONE });
 });
 
 test('alerts (issues C5): 30 s before a timed boat at the dock, 20 s before the next stop on board, once per visit', () => {

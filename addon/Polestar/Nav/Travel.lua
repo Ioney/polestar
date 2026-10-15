@@ -293,7 +293,8 @@ end
 --         item = the Hearthstone (hearth), spell = spell ID (teleport),
 --         yards = straight hops (a walk x1.25), step = "crossing"|"chain"|"goto" }
 -- Travel.SplitWalk later adds walk pieces (step and choke = { kind, name },
--- parent, seg, tail) and lift rides (kind "lift", lift, side).
+-- parent, seg, tail) and lift rides (kind "lift", lift, side), or measures an
+-- unsplit walk along the path (straightYards, straightSeconds: the estimate here).
 -- seconds are real travel time; the search orders by a cost that adds
 -- preferences (the Hearthstone's margin) on top.
 ---------------------------------------------------------------------------
@@ -1149,8 +1150,12 @@ end
 -- messages. Each answer the cache lacks is a full plan (up to 40 ms), so:
 -- cached per (start cell, destination) for a few seconds (a burst of ~10
 -- calls on a step change plans each candidate once), the oldest entry
--- evicted when 64 are held, and at most ESTIMATE_MS of planning a frame;
--- past it the answer is nil, "busy" until the next frame (security L6).
+-- evicted when 64 are held. A `budgeted` call (only the public API's, for
+-- other addons) starts no new plan once this frame has spent ESTIMATE_MS
+-- planning estimates and answers nil, "busy" until the next frame; the plan
+-- it does start may still run to its 40 ms cap (security L6). Polestar's own
+-- callers are never refused: a ranking compares full plans only, bounded by
+-- its own caps and the cache (second review P2).
 ---------------------------------------------------------------------------
 
 local CACHE_SECONDS, CACHE_CELL, CACHE_MAX = 5, 25, 64
@@ -1166,9 +1171,9 @@ local function pointWorld(p)
 	return C.MapToWorld(p.map, p.x, p.y, p.f)
 end
 
--- from, to = { map, x, y, f } (from = nil: the player)
---   -> seconds | nil (unknown position or unreachable) | nil, "busy" (this frame's budget is spent)
-function Nav.EstimateTravel(from, to)
+-- from, to = { map, x, y, f } (from = nil: the player); budgeted = true: the public API's call
+--   -> seconds | nil (unknown position or unreachable) | nil, "busy" (budgeted, this frame's budget is spent)
+function Nav.EstimateTravel(from, to, budgeted)
 	local tc, twx, twy = pointWorld(to)
 	if not tc then return nil end
 	local fc, fwx, fwy
@@ -1185,7 +1190,7 @@ function Nav.EstimateTravel(from, to)
 	local hit = estimates[key]
 	if hit and now - hit.at < CACHE_SECONDS then return hit.seconds end
 	if budgetFrame ~= now then budgetFrame, budgetSpent = now, 0 end
-	if budgetSpent >= ESTIMATE_MS then return nil, "busy" end
+	if budgeted and budgetSpent >= ESTIMATE_MS then return nil, "busy" end
 	local clock = debugprofilestop
 	local t0 = clock and clock()
 	refreshFaction()
@@ -1260,18 +1265,25 @@ end
 
 -- Seconds to the target from here; `dist` = yards to the current aim when
 -- walking, `measured` = true when dist is along a path (no detour added: review P2-5).
+-- Other legs count down from when they became current, as Progress does
+-- (second review P3).
 function Travel.Remaining(dist, measured)
 	local leg = legs and legs[ci]
 	if not leg then return nil end
 	local here = leg.seconds
-	if leg.kind == "walk" and dist then here = dist * (measured and 1 or WALK_DETOUR) / planSpeed end
+	if leg.kind == "walk" then
+		if dist then here = dist * (measured and 1 or WALK_DETOUR) / planSpeed end
+	else
+		here = here - (GetTime() - legSince)
+		if here < 0 then here = 0 end
+	end
 	return here + leg.rest
 end
 
 -- The current leg only: seconds and yards left (a walk: along the walking
 -- engine's path when it has one, else straight x1.25; other legs: the
--- planned seconds less the time since the leg became current, review P2-4).
--- Allocation-free; always finite.
+-- planned seconds less the time since the leg became current, review P2-4;
+-- a flight's since take-off). Allocation-free; always finite.
 function Travel.Progress()
 	local leg = legs and legs[ci]
 	if not leg then return nil end
@@ -1387,10 +1399,25 @@ local function handmadeNear(c, wx, wy, whole)
 	return false
 end
 
+-- The route's legs changed in place: each leg's rest again, and ROUTE_CHANGED.
+local function relink()
+	local rest = 0
+	for k = #legs, 1, -1 do
+		legs[k].rest = rest
+		rest = rest + legs[k].seconds
+	end
+	progressYards = nil
+	Travel.version = Travel.version + 1
+	ns.Fire("ROUTE_CHANGED", legs)
+end
+
 -- Split the current walk leg to (c, x, y), or the pieces it was split into
 -- before, at `stops` (Nav/Walk.lua Walk.Stops; `total` = yards along the path
--- to its end). Piece times are whole seconds that add up to the path's
--- time at run speed. -> true when the route changed.
+-- from the player to its end). Piece times are whole seconds that add up to
+-- the path's time at run speed. With no stops the walk stays one leg and
+-- takes the path's measure (yards, seconds), its straight estimate kept in
+-- straightYards/straightSeconds for Travel.RestoreWalk (second review).
+-- -> true when the route changed.
 function Travel.SplitWalk(c, x, y, stops, total)
 	local leg = legs and legs[ci]
 	if not leg or leg.kind ~= "walk" or leg.handmade or type(stops) ~= "table" then return false end
@@ -1402,8 +1429,15 @@ function Travel.SplitWalk(c, x, y, stops, total)
 	for _, s in ipairs(stops) do
 		if not handmadeNear(c, s.wx, s.wy, whole) then kept[#kept + 1] = s end
 	end
-	if #kept == 0 and not parent then return false end
-
+	if #kept == 0 and not parent then
+		if type(total) ~= "number" or total ~= total or total < 0 or total == huge then return false end
+		local py, ps = floor(total + 0.5), floor(total / RUN_SPEED + 0.5)
+		if leg.yards == py and leg.seconds == ps then return false end
+		if not leg.straightSeconds then leg.straightYards, leg.straightSeconds = leg.yards, leg.seconds end
+		leg.yards, leg.seconds = py, ps
+		relink()
+		return true
+	end
 	local P = { c = c, wx = x, wy = y, leg = whole }
 	local pieces, from, doneYards, doneSecs = {}, leg.from, 0, 0
 	local X = ns.Transit
@@ -1448,15 +1482,32 @@ function Travel.SplitWalk(c, x, y, stops, total)
 	for _, piece in ipairs(pieces) do out[#out + 1] = piece end
 	for k = m + 1, #legs do out[#out + 1] = legs[k] end
 	legs = out
-	local rest = 0
-	for k = #legs, 1, -1 do
-		legs[k].rest = rest
-		rest = rest + legs[k].seconds
-	end
-	progressYards = nil
-	Travel.version = Travel.version + 1
-	ns.Fire("ROUTE_CHANGED", legs)
+	relink()
 	return true
+end
+
+-- The walking engine's path to (c, x, y) failed or was cleared: the current
+-- walk, measured by that path, goes back to its straight estimate.
+-- -> true when the route changed.
+function Travel.RestoreWalk(c, x, y)
+	local leg = legs and legs[ci]
+	if not (leg and leg.kind == "walk" and leg.straightSeconds) then return false end
+	local to = leg.to
+	if to.c ~= c or (to.wx - x) * (to.wx - x) + (to.wy - y) * (to.wy - y) > 1 then return false end
+	leg.yards, leg.seconds = leg.straightYards, leg.straightSeconds
+	leg.straightYards, leg.straightSeconds = nil, nil
+	relink()
+	return true
+end
+
+-- Whether skipping `leg` plans the rest of the way without it (a hearth,
+-- teleport, flight, ride or portal) rather than moving on to the next leg
+-- (a walk or a lift step). Nav/Prompts.lua words its menu by it.
+function Travel.SkipReplans(leg)
+	local kind = leg.kind
+	return kind == "hearth" or (kind == "teleport" and leg.spell ~= nil)
+		or (kind == "fly" and leg.from ~= nil and leg.from.id ~= nil)
+		or (leg.transport ~= nil and kind ~= "lift")
 end
 
 -- Skip the current leg (review P2-6): a hearth, teleport, flight, ride or
@@ -1466,26 +1517,23 @@ end
 function Travel.SkipLeg()
 	local leg = legs and legs[ci]
 	if not leg then return false end
-	local kind = leg.kind
-	local replan = true
-	if kind == "hearth" then
-		skipped.hearth = true
-	elseif kind == "teleport" and leg.spell then
-		skipped.spells[leg.spell] = true
-	elseif kind == "fly" and leg.from and leg.from.id then
-		skipped.taxi[leg.from.id] = true
-	elseif leg.transport and kind ~= "lift" then
-		skipped.transports[leg.transport] = true
-	else
-		replan = false
-	end
-	if replan then
-		skipFor = Nav.GetTarget()
-		Travel.Replan()
+	if not Travel.SkipReplans(leg) then
+		if leg.waypoint then dirty = true end
+		advance()
 		return true
 	end
-	if leg.waypoint then dirty = true end
-	advance()
+	local kind = leg.kind
+	if kind == "hearth" then
+		skipped.hearth = true
+	elseif kind == "teleport" then
+		skipped.spells[leg.spell] = true
+	elseif kind == "fly" then
+		skipped.taxi[leg.from.id] = true
+	else
+		skipped.transports[leg.transport] = true
+	end
+	skipFor = Nav.GetTarget()
+	Travel.Replan()
 	return true
 end
 
@@ -1590,6 +1638,9 @@ local lastGhost = false
 function Travel:Refresh()
 	local taxiNow = onTaxi()
 	if wasTaxi and not taxiNow then dirty = true end
+	-- Taking off: the flight counts down from here, not from reaching the
+	-- flight master (second review P3).
+	if taxiNow and not wasTaxi and legs and legs[ci] and legs[ci].kind == "fly" then legSince = GetTime() end
 	wasTaxi = taxiNow
 	if taxiNow or not Nav.GetTarget() or not ns.Get("nav.travel") then return end
 	-- A Hearthstone coming off cooldown mid-ride is no reason to plan from the deck.

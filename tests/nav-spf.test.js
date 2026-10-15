@@ -452,6 +452,54 @@ test('K7: legs under a few yards are dropped and every ETA stays finite', () => 
 	assert.equal(out.short, 0);
 });
 
+test('second review: a walk leg takes the engine path\'s length once it arrives', () => {
+	const [out] = run(`
+		nav.useTravelWorld()
+		local T = Polestar.Nav.travel
+		local function walk()
+			local legs, ci = N.GetRoute()
+			local l = legs[ci]
+			return { l.kind, l.yards, l.seconds, l.seconds + l.rest, #legs }
+		end
+		local r, changes = {}, 0
+		Polestar.On("ROUTE_CHANGED", function() changes = changes + 1 end)
+		nav.place(0, 0)
+		target(0, -600)
+		N.Sample()
+		r.straight = walk()
+		local before = changes
+		fake.resolve(0, 0, 300, -300, 0, -600)
+		r.changes = changes - before
+		r.path = walk()
+		N.Sample() -- the arrow's next frame
+		local s, y = T.Progress()
+		r.progress = { floor(s + 0.5), floor(y + 0.5) }
+		r.calls = calls()
+		-- Strayed, asked again, and that search fails: back to the straight estimate.
+		nav.place(0, -40)
+		stub.advance(3)
+		N.Sample()
+		fake.fail("unreachable")
+		r.failed = walk()
+		-- A path again, then the option off (the path cleared): straight again.
+		target(0, -650)
+		N.Sample()
+		fake.resolve(0, -40, 300, -300, 0, -650)
+		r.again = walk()
+		Polestar.Set("nav.navRouting", false)
+		r.cleared = walk()
+		emit(r)`);
+	assert.deepEqual(out.straight, ['walk', 750, 107, 107, 1], 'straight x1.25 at 7 yd/s before the path');
+	const path = 2 * Math.hypot(300, 300);
+	assert.deepEqual(out.path, ['walk', Math.round(path), Math.round(path / 7), Math.round(path / 7), 1], 'the path\'s yards, at the same pace');
+	assert.equal(out.changes, 1, 'one ROUTE_CHANGED, as a split fires');
+	assert.deepEqual(out.progress, [Math.round(path / 7), Math.round(path)], 'Progress agrees with the leg');
+	assert.equal(out.calls, 1);
+	assert.deepEqual(out.failed, out.straight, 'the search failed: the planner\'s straight estimate again');
+	assert.equal(out.again[1], Math.round(Math.hypot(300, 260) + Math.hypot(300, 350)));
+	assert.equal(out.cleared[1], Math.round(610 * 1.25), 'the straight estimate again once the path is cleared');
+});
+
 test('K8: a hand-made crossing, chain node or guide goto at the same spot keeps its own caption', () => {
 	const [out] = run(`
 		nav.useTravelWorld()

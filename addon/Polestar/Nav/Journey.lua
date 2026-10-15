@@ -17,7 +17,9 @@
 --     Points are a uiMapID and x, y as 0-1 fractions, as TomTom and C_Map take them.
 --       API.Estimate(fromMap, fromX, fromY, toMap, toX, toY) -> seconds | nil, reason
 --           travel time by the route planner (cached there); fromMap nil: from the
---           player, the Hearthstone included. reason "invalid" | "unknown"
+--           player, the Hearthstone included. reason "invalid" | "unknown" | "busy"
+--           (no new plan starts once this frame has spent 25 ms on estimates; ask
+--           again next frame)
 --       API.Navigate(owner, map, x, y, title) -> true | false   point the arrow there
 --       API.Cancel(owner) -> true | false   the owner's target, while shown, lets go
 --       API.Active() -> active, owner       anything guided to; owner when an API caller set it
@@ -37,9 +39,9 @@
 --   * With TomTom installed, nav.followTomTom (off by default) points the
 --     arrow wherever TomTom's arrow points (see "Following TomTom's arrow").
 --
--- Journey.Estimate(from, to) -> seconds | nil and Journey.PlanTo(map, x, y,
--- label) are shared with Nav/Nearby.lua; Journey.IsTomTomTarget(target) with
--- Nav/Bridges.lua.
+-- Journey.Estimate(from, to, budgeted) -> seconds | nil[, "busy"] and
+-- Journey.PlanTo(map, x, y, label) are shared with Nav/Nearby.lua;
+-- Journey.IsTomTomTarget(target) with Nav/Bridges.lua.
 
 local ADDON, ns = ...
 local Nav = ns.Nav
@@ -108,11 +110,14 @@ end
 -- Seconds from `from` ({ map, x, y, f }; nil: the player, Hearthstone
 -- included) to `to`: the route planner's estimate (Nav.EstimateTravel, cached
 -- there), else running in a straight line on one continent. nil when either
--- end cannot be placed, or across continents without the planner.
-function Journey.Estimate(from, to)
+-- end cannot be placed, or across continents without the planner. `budgeted`
+-- (the public API only) may answer nil, "busy": the planner's frame budget is
+-- spent, and no straight line stands in for it (second review P2).
+function Journey.Estimate(from, to, budgeted)
 	if Nav.EstimateTravel then
-		local s = Nav.EstimateTravel(from, to)
+		local s, why = Nav.EstimateTravel(from, to, budgeted)
 		if s then return s end
+		if why == "busy" then return nil, "busy" end
 	end
 	local C = ns.Compat
 	local fc, fx, fy
@@ -331,8 +336,8 @@ function API.Estimate(fromMap, fromX, fromY, toMap, toX, toY)
 		from = apiPoint(fromMap, fromX, fromY)
 		if not from then return nil, "invalid" end
 	end
-	local seconds = Journey.Estimate(from, to)
-	if not seconds then return nil, "unknown" end
+	local seconds, why = Journey.Estimate(from, to, true)
+	if not seconds then return nil, why == "busy" and "busy" or "unknown" end
 	return seconds
 end
 

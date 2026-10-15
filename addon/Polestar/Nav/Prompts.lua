@@ -20,9 +20,10 @@
 --   (QoL/Buttons.lua) already showing the same item wins.
 --
 --   Skip a leg: right-click the arrow (or the travel button), or
---   /polestar skipleg. On a Hearthstone leg the rest of this trip is planned
---   without it; any other leg is marked done and the arrow moves on
---   (Nav.travel.SkipLeg).
+--   /polestar skipleg. A Hearthstone, teleport, flight, ride or portal leg
+--   ("Skip this leg") is left out and the rest of this trip planned without
+--   it; a walk or lift step ("Mark this leg done") is marked done and the
+--   arrow moves on (Nav.travel.SkipLeg, Nav.travel.SkipReplans).
 
 local ADDON, ns = ...
 local Nav = ns.Nav
@@ -372,13 +373,14 @@ local function skip() Prompts.SkipLeg() end
 function Prompts.MenuItems()
 	local leg = skippable()
 	if not leg then return nil end
-	if leg.kind == "hearth" then
-		return { { text = L["Skip the Hearthstone"], tip = L["Plans the rest of this trip without it."], onClick = skip } }
+	local T = Nav.travel
+	if T.SkipReplans and T.SkipReplans(leg) then
+		return { { text = L["Skip this leg"], tip = L["Plans the rest of this trip without it."], onClick = skip } }
 	end
 	return { { text = L["Mark this leg done"], tip = L["The arrow moves on to the next leg."], onClick = skip } }
 end
 
-ns.RegisterCommand("skipleg", skip, L["Skip the travel route's current leg (on a Hearthstone leg: plan without it)"])
+ns.RegisterCommand("skipleg", skip, L["Skip the travel route's current leg (a Hearthstone, teleport, flight, ride or portal: plan the rest without it; a walk or lift: mark it done)"])
 
 ---------------------------------------------------------------------------
 -- Wiring
@@ -392,8 +394,11 @@ local function hookArrow()
 		if mouse == "RightButton" then openMenu(self) end
 	end)
 	a:HookScript("OnEnter", function()
-		if GameTooltip and skippable() then
-			GameTooltip:AddLine(L["Right-click to skip this leg."], Nav.RGB("textDim"))
+		local leg = GameTooltip and skippable()
+		if leg then
+			local T = Nav.travel
+			local replans = T.SkipReplans and T.SkipReplans(leg)
+			GameTooltip:AddLine(replans and L["Right-click to skip this leg."] or L["Right-click to mark this leg done."], Nav.RGB("textDim"))
 			GameTooltip:Show()
 		end
 	end)

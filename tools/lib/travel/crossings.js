@@ -413,7 +413,7 @@ function recordedChain({ walks, target, frames, within = CHAIN.within, tolerance
 // --- Lua -----------------------------------------------------------------------
 
 function luaStr(s) {
-	return `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
+	return `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`;
 }
 
 const num = (n) => String(Object.is(n, -0) ? 0 : n);

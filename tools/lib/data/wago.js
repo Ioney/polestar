@@ -20,6 +20,8 @@ const PRODUCTS = {
 };
 const PRODUCT = PRODUCTS.era.key;
 const TABLES = PRODUCTS.era.tables;
+// A build version names a cache folder: digits and dots only (security L10).
+const BUILD_RE = /^\d+(\.\d+)+$/;
 
 function tableUrl(table, build) {
 	return `https://wago.tools/db2/${table}/csv?build=${encodeURIComponent(build)}`;
@@ -40,7 +42,7 @@ function newestCachedBuild(cacheRoot, product, tables = product.tables) {
 	if (!fs.existsSync(cacheRoot)) return null;
 	const builds = fs
 		.readdirSync(cacheRoot)
-		.filter((b) => /^\d+(\.\d+)+$/.test(b) && product.family.test(b) && tables.every((t) => fs.existsSync(path.join(cacheRoot, b, `${t}.csv`))))
+		.filter((b) => BUILD_RE.test(b) && product.family.test(b) && tables.every((t) => fs.existsSync(path.join(cacheRoot, b, `${t}.csv`))))
 		.sort(compareVersions);
 	return builds.length ? builds[builds.length - 1] : null;
 }
@@ -54,7 +56,7 @@ async function fetchText(fetchImpl, url) {
 async function latestBuild(fetchImpl, product) {
 	const builds = JSON.parse(await fetchText(fetchImpl, BUILDS_URL));
 	const listed = Array.isArray(builds[product.key]) ? builds[product.key].map((b) => b.version).filter(Boolean) : [];
-	const list = listed.filter((v) => product.family.test(v));
+	const list = listed.filter((v) => typeof v === 'string' && BUILD_RE.test(v) && product.family.test(v));
 	if (!list.length) throw new Error(`${BUILDS_URL}: no ${product.key} ${product.family.source} builds listed`);
 	return list.sort(compareVersions)[list.length - 1];
 }

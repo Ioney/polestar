@@ -633,3 +633,22 @@ test('security L10: only digits-and-dots builds name a cache folder; a carriage 
 	}
 	assert.equal(luaStr('a\r\nb'), '"a\\r\\nb"');
 });
+
+test('second review L10b: wago.js takes only digits-and-dots builds from wago.tools; crossings Lua escapes a carriage return', async () => {
+	const { pickBuild } = require('../tools/lib/data/wago');
+	const { crossingsLua } = require('../tools/lib/travel/crossings');
+	const dir = tmpdir('polestar-wago-');
+	try {
+		const listing = (versions) => async () => new Response(JSON.stringify({ wow_classic_beta: versions.map((version) => ({ version })) }));
+		const picked = await pickBuild({ sourcesDir: dir, product: 'forever', fetchImpl: listing(['1.60.0', '1.60.1/../../escape']) });
+		assert.equal(picked.build, '1.60.0', 'a version with a path in it is never picked');
+		await assert.rejects(pickBuild({ sourcesDir: dir, product: 'forever', fetchImpl: listing(['1.60.1/../../escape']) }), /no wow_classic_beta/);
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+	const frames = { frame: () => ({ c: 0, top: 1, bottom: 0, left: 0, right: 1 }), name: () => 'Zone\rName' };
+	const set = { crossings: [{ id: 'gate', a: { map: 1, c: 0, wx: 0, wy: 0, r: 5 }, b: { map: 2, c: 0, wx: 1, wy: 1, r: 5 } }], open: [], chains: [] };
+	const lua = crossingsLua(set, frames, { complete: false }).join('\n');
+	assert.match(lua, /name = "Zone\\rName"/);
+	assert.doesNotMatch(lua, /\r/);
+});

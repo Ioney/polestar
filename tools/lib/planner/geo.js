@@ -19,21 +19,25 @@ class Geo {
 		this.ids = [...new Set([...this.era.frames.keys(), ...this.live.frames.keys()])].sort((a, b) => a - b);
 	}
 
-	frame(map, f) {
+	// The frame set (era or live) that has map, f's first; null when neither.
+	framesOf(map, f) {
 		const [a, b] = f === 'e' ? [this.era, this.live] : [this.live, this.era];
-		return a.frame(map) || b.frame(map);
+		return a.frame(map) ? a : b.frame(map) ? b : null;
+	}
+
+	frame(map, f) {
+		const set = this.framesOf(map, f);
+		return set ? set.frame(map) : null;
 	}
 
 	toWorld(map, x, y, f) {
-		const b = this.frame(map, f);
-		if (!b) return null;
-		return { c: b.c, wx: b.top + (b.bottom - b.top) * (y / 100), wy: b.left + (b.right - b.left) * (x / 100) };
+		const set = this.framesOf(map, f);
+		return set ? set.toWorld(map, x, y) : null;
 	}
 
 	toMap(map, c, wx, wy, f) {
-		const b = this.frame(map, f);
-		if (!b || b.c !== c) return null;
-		return { x: ((wy - b.left) / (b.right - b.left)) * 100, y: ((wx - b.top) / (b.bottom - b.top)) * 100 };
+		const set = this.framesOf(map, f);
+		return set ? set.toMap(map, c, wx, wy) : null;
 	}
 
 	// Zone/city maps (type 3) of continent c whose rectangle holds the point,

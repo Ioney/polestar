@@ -20,10 +20,8 @@
 // System.cpp, vmap4_extractor vmapexport.cpp IsLiquidIgnored; the flag value
 // from src/common/Collision/Maps/MapDefines.h LiquidMaterialFlags).
 
-const fs = require('node:fs');
 const path = require('node:path');
-const { parseCsv } = require('../../data/csv');
-const { tableUrl } = require('../../data/wago');
+const { cachedTable } = require('../../data/wago');
 const { chunks, parseRoot, terrainTriangles, ADT } = require('./adt');
 const { parseMh2o } = require('./mh2o');
 const { parsePlacements, placementMatrix, transformPoints, transformBox } = require('./place');
@@ -47,23 +45,12 @@ const tables = new Map(); // csv path -> Promise of rows
 function wagoTable(casc, name) {
 	const file = path.join(sourcesOf(casc), 'wago', casc.build, `${name}.csv`);
 	if (!tables.has(file)) {
-		const p = (async () => {
-			if (!fs.existsSync(file)) {
-				if (casc.offline) throw new Error(`--offline: missing cached ${path.relative(process.cwd(), file)}`);
-				const url = tableUrl(name, casc.build);
-				const res = await (casc.fetchImpl || globalThis.fetch)(url, { headers: { 'user-agent': 'polestar-nav' } });
-				if (!res.ok) throw new Error(`GET ${url}: HTTP ${res.status}`);
-				const text = await res.text();
-				const rows = parseCsv(text);
-				if (!rows.length || !('ID' in rows[0])) throw new Error(`${url}: not a DB2 CSV export`);
-				fs.mkdirSync(path.dirname(file), { recursive: true });
-				const tmp = `${file}.${process.pid}.tmp`;
-				fs.writeFileSync(tmp, text);
-				fs.renameSync(tmp, file);
-				return rows;
-			}
-			return parseCsv(fs.readFileSync(file, 'utf8'));
-		})();
+		const get = async (url) => {
+			const res = await (casc.fetchImpl || globalThis.fetch)(url, { headers: { 'user-agent': 'polestar-nav' } });
+			if (!res.ok) throw new Error(`GET ${url}: HTTP ${res.status}`);
+			return res.text();
+		};
+		const p = cachedTable({ sourcesDir: sourcesOf(casc), build: casc.build, table: name, offline: casc.offline, get });
 		tables.set(file, p);
 		p.catch(() => tables.delete(file));
 	}

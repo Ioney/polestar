@@ -23,7 +23,7 @@
 //   ui:<key>          a named client texture, the UI table below
 //
 // Tables are the Forever build's (the one CASC serves), cached as
-// data/sources/wago/<build>/<Table>.csv (tools/lib/data/wago.js tableUrl).
+// data/sources/wago/<build>/<Table>.csv (tools/lib/data/wago.js cachedTable).
 // Paths resolve to fileDataIDs through wago.tools' file search
 // (`/api/files?search=<term>&branch=<product>`, JSON { fdid: path }; slow,
 // tens of seconds): a UI texture searches its whole folder, the race icons
@@ -41,8 +41,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { SOURCES, ROOT } = require('../lib/paths');
-const { parseCsv } = require('../lib/data/csv');
-const { tableUrl } = require('../lib/data/wago');
+const { cachedTable } = require('../lib/data/wago');
 const { openCasc, fetchRetry } = require('../lib/planner/art/casc');
 const { decodeBlp } = require('../lib/planner/art/blp');
 const { encodePng } = require('../lib/planner/art/png');
@@ -199,17 +198,8 @@ function openIcons({ sourcesDir = SOURCES, outDir = DEFAULT_OUT, product = 'wow_
 		const { build } = await getCasc().catch((err) => {
 			throw offline ? new NotCached(err.message) : err;
 		});
-		const file = path.join(sourcesDir, 'wago', build, `${name}.csv`);
-		if (!fs.existsSync(file)) {
-			if (offline) throw new NotCached(`--offline: ${name}.csv of ${build} is not cached`);
-			const url = tableUrl(name, build);
-			const text = (await fetchRetry(url, { fetchImpl })).toString('utf8');
-			const rows = parseCsv(text);
-			if (!rows.length || !('ID' in rows[0])) throw new Error(`${url}: not a DB2 CSV export`);
-			writeAtomic(file, text);
-			return rows;
-		}
-		return parseCsv(fs.readFileSync(file, 'utf8'));
+		const get = async (url) => (await fetchRetry(url, { fetchImpl })).toString('utf8');
+		return cachedTable({ sourcesDir, build, table: name, offline, get, missing: () => new NotCached(`--offline: ${name}.csv of ${build} is not cached`) });
 	}
 	function index(name, build) {
 		if (!tables.has(name)) {

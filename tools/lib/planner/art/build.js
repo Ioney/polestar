@@ -26,8 +26,7 @@ const path = require('node:path');
 const zlib = require('node:zlib');
 const { Worker } = require('node:worker_threads');
 const { ROOT, SOURCES, DATA } = require('../../paths');
-const { parseCsv } = require('../../data/csv');
-const { tableUrl, PRODUCTS } = require('../../data/wago');
+const { cachedTable, PRODUCTS } = require('../../data/wago');
 const { buildOverlays } = require('../../maps/overlays');
 const { openCasc, fetchRetry, checkBuild } = require('./casc');
 const { readMaid, GRID } = require('./wdt');
@@ -53,23 +52,10 @@ const num = Number;
 // The wago.tools client tables of `build` -> { [table]: rows }, fetching the
 // ones not cached under <sources>/wago/<build>/.
 async function loadTables({ sourcesDir, build, offline, fetchImpl, log }) {
-	const dir = path.join(sourcesDir, 'wago', checkBuild(build, 'wago tables'));
+	checkBuild(build, 'wago tables');
+	const get = async (url) => (await fetchRetry(url, { fetchImpl, timeout: 600000 })).toString('utf8');
 	const tables = {};
-	for (const t of TABLES) {
-		const file = path.join(dir, `${t}.csv`);
-		if (!fs.existsSync(file)) {
-			if (offline) throw new Error(`--offline: missing cached ${path.relative(process.cwd(), file)}`);
-			const url = tableUrl(t, build);
-			log(`fetching ${url}`);
-			const text = (await fetchRetry(url, { fetchImpl, timeout: 600000 })).toString('utf8');
-			const rows = parseCsv(text);
-			if (!rows.length || !('ID' in rows[0])) throw new Error(`${url}: not a DB2 CSV export`);
-			fs.mkdirSync(dir, { recursive: true });
-			fs.writeFileSync(`${file}.tmp`, text);
-			fs.renameSync(`${file}.tmp`, file);
-		}
-		tables[t] = parseCsv(fs.readFileSync(file, 'utf8'));
-	}
+	for (const t of TABLES) tables[t] = await cachedTable({ sourcesDir, build, table: t, offline, get, log });
 	return tables;
 }
 

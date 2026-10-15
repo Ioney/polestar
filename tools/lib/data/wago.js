@@ -59,6 +59,26 @@ async function latestBuild(fetchImpl, product) {
 	return list.sort(compareVersions)[list.length - 1];
 }
 
+// The rows of client table `table` of `build`: the cached
+// <sourcesDir>/wago/<build>/<table>.csv, else fetched (`get(url)` -> text,
+// checked to be a DB2 CSV export) and cached, written atomically. Offline, a
+// missing file throws `missing(file)` (default an Error naming it).
+async function cachedTable({ sourcesDir, build, table, offline = false, get, missing, log = () => {} }) {
+	const file = path.join(sourcesDir, 'wago', build, `${table}.csv`);
+	if (fs.existsSync(file)) return parseCsv(fs.readFileSync(file, 'utf8'));
+	if (offline) throw missing ? missing(file) : new Error(`--offline: missing cached ${path.relative(process.cwd(), file)}`);
+	const url = tableUrl(table, build);
+	log(`fetching ${url}`);
+	const text = await get(url);
+	const rows = parseCsv(text);
+	if (!rows.length || !('ID' in rows[0])) throw new Error(`${url}: not a DB2 CSV export`);
+	fs.mkdirSync(path.dirname(file), { recursive: true });
+	const tmp = `${file}.${process.pid}.tmp`;
+	fs.writeFileSync(tmp, text);
+	fs.renameSync(tmp, file);
+	return rows;
+}
+
 // The build to read: `build` when given, else the newest wago.tools lists for
 // the product, else (offline, or wago.tools unreachable) the newest cached
 // one holding `tables` (default the product's). -> { build, warnings }
@@ -86,27 +106,14 @@ async function pickBuild({ sourcesDir, build, offline = false, fetchImpl = globa
 async function loadWago({ sourcesDir, build, offline = false, fetchImpl = globalThis.fetch, log = () => {}, product: name = 'era' }) {
 	const product = PRODUCTS[name];
 	if (!product) throw new Error(`wago: unknown product "${name}"`);
-	const cacheRoot = path.join(sourcesDir, 'wago');
 	const picked = await pickBuild({ sourcesDir, build, offline, fetchImpl, product: name });
 	const warnings = picked.warnings;
 	const chosen = picked.build;
-	const dir = path.join(cacheRoot, chosen);
 	const tables = {};
 	const urls = {};
 	const load = async (t) => {
-		const file = path.join(dir, `${t}.csv`);
 		urls[t] = tableUrl(t, chosen);
-		if (!fs.existsSync(file)) {
-			if (offline) throw new Error(`--offline: missing cached ${path.relative(process.cwd(), file)}`);
-			log(`fetching ${urls[t]}`);
-			const text = await fetchText(fetchImpl, urls[t]);
-			const rows = parseCsv(text);
-			if (!rows.length || !('ID' in rows[0])) throw new Error(`${urls[t]}: not a DB2 CSV export`);
-			fs.mkdirSync(dir, { recursive: true });
-			fs.writeFileSync(`${file}.tmp`, text);
-			fs.renameSync(`${file}.tmp`, file);
-		}
-		tables[t] = parseCsv(fs.readFileSync(file, 'utf8'));
+		tables[t] = await cachedTable({ sourcesDir, build: chosen, table: t, offline, get: (url) => fetchText(fetchImpl, url), log });
 	};
 	for (const t of product.tables) await load(t);
 	for (const t of product.optional) {
@@ -120,4 +127,4 @@ async function loadWago({ sourcesDir, build, offline = false, fetchImpl = global
 	return { build: chosen, product: product.key, tables, urls, warnings };
 }
 
-module.exports = { loadWago, pickBuild, compareVersions, tableUrl, TABLES, PRODUCT, PRODUCTS, BUILDS_URL };
+module.exports = { loadWago, pickBuild, cachedTable, compareVersions, tableUrl, TABLES, PRODUCT, PRODUCTS, BUILDS_URL };

@@ -208,7 +208,7 @@ test('achieve: id, required name and optional criterion', () => {
 
 test('without professions.json and factions.json: built-in professions still resolve, quoted names warn, nothing crashes', () => {
 	const data = dataWithout('professions.json', 'factions.json');
-	assert.deepEqual(data.missing, ['professions.json', 'factions.json', 'trainers.json', 'travel.json']);
+	assert.deepEqual(data.missing, ['professions.json', 'factions.json', 'trainers.json', 'travel.json', 'spawnz.json']);
 	const src = guideText([
 		'step S',
 		'  skill Tailoring 75',

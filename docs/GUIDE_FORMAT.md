@@ -218,6 +218,7 @@ AND. `only Warrior,Paladin,Dwarf` = (Warrior or Paladin) and Dwarf.
 | Era frame flag `f = "e"` | when coordinates come from Era-frame data, or were typed in an `era` guide/goal |
 | spawn areas `spots` | every goal placed at an NPC or object that spawns at more than one place, and hand-placed `@x,y` goals whose target the data also knows: see "Spawn areas" below |
 | group content `group` | elite work, dungeon and raid quests and goals on an instance map: see "Group content" below |
+| height `z` | a goal at an NPC or object: the height of that NPC's or object's spawn (`spawnz.json`), so the walk ends on its floor: see "Heights" below |
 
 **Spawn areas.** Mobs, quest objects and some NPCs spawn at more than one
 place, and a player who finds nothing where the arrow led must be able to try
@@ -268,6 +269,31 @@ gets no `spots`.
   point lies.
 
 See docs/ARCHITECTURE.md, Smart logic, "Spawn areas".
+
+**Heights.** In stacked places (the Undercity's quarters under its streets, a
+tower's floors) a point on the map is several places, and the walking route
+ends on whichever floor its engine picks. So a goal whose point stands for an
+NPC or object gets that entity's height, `z` (world yards), from
+`data/forever/spawnz.json` (CMaNGOS classic-db's spawn positions, which
+`data build` writes): the z of the entity's nearest spawn on the goal's
+instance map (its world point's, in the goal's frame), when that spawn is
+within 15 yards of the point. Nothing is guessed: an NPC only Forever has, or
+one Forever moved more than 15 yards, gets none, and without `spawnz.json` no
+goal gets one. These goals can get one, their point being the NPC's or
+object's (its spawn, or your `@x,y` at it):
+
+- `accept` and `turnin` at their NPC or object (not a quest from an item);
+- `talk`, `kill` (the spawn nearest the previous goal; a point at the centre
+  of many spawns is seldom within 15 yards of one), `interact`;
+- `buy`, `train`, `vendor`, `sethome`, `getfp` and `learn` naming an `npc`.
+
+`goto` and `explore` (places), `collect` (a farming spot among the item's
+sources), `use` and smart targets (`nearest`, class and profession trainers:
+the engine picks the NPC at runtime) never get one, nor does the arrow carry
+it to a spawn area other than the goal's own point. `compile` prints how many
+goals got one ("heights: N of M NPC or object goals got z"). In the game the
+walk is searched with the height and asked again without it when that finds
+no route or one ending more than 30 yards above or below it.
 
 ## Group content
 

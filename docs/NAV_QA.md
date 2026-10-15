@@ -92,6 +92,21 @@ once the walking maps carry them).
 | K7 | Legs under a few yards are merged or dropped; every time stays finite | `tests/nav-spf.test.js`, `tests/nav-route-lines.test.js`, `tests/ui-journey.test.js` |
 | K8 | A hand-made chain node or guide goto at the same spot keeps its own caption | `tests/nav-spf.test.js`, `tests/nav-route-lines.test.js` |
 
+## Floors (Z1-Z3)
+
+A walk searched without a height ends on whichever floor the engine picks
+under the target: measured over our guides, 435 of 2,325 NPC and object
+goals in stacked places (18%) ended on the wrong floor, Andron Gant in the
+Undercity's Rogues' Quarter on the street 100 yards above him. Guide goals
+now carry their NPC's or object's spawn height (CMaNGOS classic-db, which
+matches the walking maps' floors for 99.1% of them).
+
+| # | Check | Polestar |
+|---|---|---|
+| Z1 | A guide goal at an NPC or object is searched with its height and ends on its floor; a point set by hand has no height | `tests/engine-heights.test.js`, `tests/nav-spf.test.js`, `tests/nav-e2e.test.js` |
+| Z2 | A search with the height that fails, or whose path ends more than 30 yards above or below it, is asked once more without it, and that answer stands | `tests/nav-spf.test.js` |
+| Z3 | Only a goal whose point stands for an NPC or object gets a height, from a spawn of that NPC or object on the same map within 15 yards; gotos, collect spots, exploration, smart targets and spawn places elsewhere get none | `tests/dsl-heights.test.js`, `tests/engine-heights.test.js` |
+
 ## In game
 
 What tests cannot prove, checked in the client before a release:

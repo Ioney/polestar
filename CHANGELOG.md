@@ -94,6 +94,11 @@
   Moonglade, a shaman's Astral Recall to the bound inn, when off cooldown and
   faster. The Darnassus and Rut'theran Village portals are part of routes
   too. Options, Arrow & routes, "Class teleports".
+- The walk to a guide's NPC or object ends on its floor: Andron Gant in the
+  Undercity's Rogues' Quarter is reached down in the quarter, not on the
+  street above it. Guide goals carry the height of the NPC or object they
+  lead to; where that height finds no route, or the route ends far above or
+  below it, the arrow walks as before. A point you set yourself is unchanged.
 
 ### For guide authors
 
@@ -131,6 +136,15 @@
   legs the arrow walks straight over ground the grid cannot walk, without
   and with them. Not used by the addon yet: with these aids the arrow still
   walks straight inside a zone, and some cities' gates are not yet found.
+- The compiler gives every goal at an NPC or object (accept, turn in, talk,
+  kill, interact, buy, train, vendor, set home, flight point, learn) the
+  height of that NPC's or object's spawn as `z`, when one stands on the
+  goal's map within 15 yards of its point (docs/GUIDE_FORMAT.md, "Heights");
+  gotos, collect spots, exploration and smart targets get none. `compile`
+  prints how many goals got one. The heights come from CMaNGOS classic-db
+  (GPL-3.0, used as facts), which `data build` now writes as
+  `data/forever/spawnz.json`; the pack's LICENSE-DATA.txt names it. Packs stay
+  format 2: an older Polestar ignores `z`.
 
 ### For contributors
 
@@ -228,6 +242,18 @@
   from the timetable. `Compat.GetPlayerUnitPosition()` is the one reader of
   `UnitPosition`, `Compat.GetSpellCooldown()` reads spell cooldowns. Tested
   by `tests/nav-transit.test.js` (NAV_QA C5, C9, K3, 11).
+- Goal heights: `tools/lib/travel/cmangos.js` also extracts every creature
+  and gameobject spawn on maps 0 and 1 (`loadSpawnHeights`, cached as
+  `data/sources/cmangos/<rev>/spawnz.json`; `<table>_spawn_entry` fills
+  pooled spawns) and `data build` writes it as `data/forever/spawnz.json`
+  (left out with one warning when `--offline` has no cached dump);
+  `tools/lib/dsl/heights.js` gives goals `z` (emit.js `GOAL_KEYS`, after `y`);
+  the Engine's waypoint carries it while it is the goal's own point,
+  `Nav.GetTargetWorld()` returns it fourth, and `Nav/Walk.lua` passes it to
+  `Path.Find`, asking once more without it when the search fails or the path
+  ends more than 30 yd from it. Tested by `tests/data-spawnz.test.js`,
+  `tests/dsl-heights.test.js`, `tests/engine-heights.test.js`,
+  `tests/nav-spf.test.js` and `tests/nav-e2e.test.js` (NAV_QA Z1-Z3).
 
 ## 0.2.4 (unreleased)
 

@@ -480,7 +480,12 @@ place it spawns); with `spread = true` (an area objective, or a few places far
 apart) up to 12 spread over the whole area, as a walk from `x`/`y`. The other
 places follow with `alt = true`; a hand-placed point is the first spot, the
 data's places its alternatives (GUIDE_FORMAT, "Spawn areas"). `x`/`y` stay the
-default point.
+default point. `z` (optional, 0.2.5) is the height of the NPC or object the
+goal's `x`/`y` stands for (the compiler's, from `spawnz.json`: GUIDE_FORMAT,
+"Heights"); the Engine puts it on the waypoint while the waypoint is that
+point (`posOf`: not a smart target's candidate, not a spot elsewhere), and the
+walk to it is searched with it ("Walking paths" under Nav). Packs stay format
+2: an older Polestar ignores it.
 
 Group content (format 2; GUIDE_FORMAT, "Group content"): `group = { kind =
 "elite", rank = 1|2|3 }`, `{ kind = "dungeon"|"raid", name = "Dire Maul" }` or
@@ -1416,6 +1421,15 @@ most every 2 s, the old path kept meanwhile); a failed search (`nodata`,
 `outside`, `offmesh`, `unreachable`, `error`, `Path.Available(map)` false,
 or `Find` raising) is asked again only after 15 s and 25 yd. Nothing is
 asked for in combat (the engine's own queue waits out combat as well).
+The walk to the target's own point carries the target's height: the Engine
+waypoint's `z` (a guide goal at an NPC or object, Guide data), which
+`Nav.GetTargetWorld()` returns fourth (a target set with `Nav.SetTarget` has
+none). It goes to `Path.Find` as `to.z`, so the path ends on that floor; a
+search with it that fails, or whose path's last engine point before the goal
+lies more than 30 yd above or below it, is asked once more without it, and
+that answer stands for the goal (later searches for it, after straying, go
+without it too). Walks to a leg's end other than the target go without a
+height (docs/NAV_QA.md Z1-Z3).
 Hand-made walks win: a walk leg from a crossing or chain waypoint, to a
 chain node past its mouth, or from inside a chain (`leg.handmade`), and a
 guide goal whose last located goal before it, across steps, is a `goto`
@@ -1772,7 +1786,7 @@ into a guide pack.
 touches what Polestar uses from it (the router, the maps, route lines,
 timetables, map clicks, TomTom, the travel prompts) is listed in
 [docs/NAV_QA.md](NAV_QA.md) with the check Polestar holds itself to; test
-names cite its ids (rows 1-16, C1-C17, H1-H2, K1-K8).
+names cite its ids (rows 1-16, C1-C17, H1-H2, K1-K8, Z1-Z3).
 
 ## Quests — quest database, markers, tooltips, quest levels
 
@@ -2984,6 +2998,10 @@ professions.json { "<skillLineID>": { id, name, kind: "primary"|"gathering"|"sec
 factions.json { "<factionID>": { id, name, side: "Alliance"|"Horde"|null, parent, source: [] } }   (Forever Faction table wins by id, Era fills)
 races.json    { "<raceFile>": { "<Alliance|Horde>": { id, bit, classes: [classFiles] } } }   (Forever client ChrRaces, ChrClasses,
               CharBaseInfo; written only when those tables are cached; see tools/lib/data/races.js)
+spawnz.json   { npc: { "<id>": [[instanceMap, x, y, z], ...] }, object: { ... } }   (CMaNGOS classic-db creature and
+              gameobject spawns on maps 0 and 1, UnitPosition's frame (x north, y west), 0.1 yd, each id's spawns sorted;
+              one id per line; the compiler's goal `z`, tools/lib/dsl/heights.js; left out, with one warning, when
+              --offline has no cached dump; tools/lib/travel/cmangos.js loadSpawnHeights)
 meta.json     { builtAt, sources: [ { name, url, revision, license } ], counts: { ... }, liveFrameMaps: [uiMapIDs],
                 questie: { notInStore: [quest ids], changedFields: { field: count } } }
 dungeons.json { source: { name, addon, title, version, author, license }, dungeons: [ { key, name, levels: { min, max },

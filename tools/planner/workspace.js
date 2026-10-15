@@ -28,6 +28,26 @@ const { ROOT, DATA, SOURCES } = require('../lib/paths');
 const sha1 = (text) => crypto.createHash('sha1').update(text).digest('hex');
 const toPosix = (p) => p.split(path.sep).join('/');
 
+// Writes a guide file whole or not at all: a temporary file beside it (not
+// .guide, so the watcher passes it by), renamed over it; through a symlink to
+// its target.
+function writeAtomic(abs, text) {
+	let file = abs;
+	try {
+		file = fs.realpathSync(abs);
+	} catch {
+		fs.mkdirSync(path.dirname(abs), { recursive: true });
+	}
+	const tmp = `${file}.${process.pid}.tmp`;
+	try {
+		fs.writeFileSync(tmp, text);
+		fs.renameSync(tmp, file);
+	} catch (err) {
+		fs.rmSync(tmp, { force: true });
+		throw err;
+	}
+}
+
 // A file as the planner names it: relative to the repository when inside it, else absolute.
 function shownFile(abs) {
 	const rel = path.relative(ROOT, abs);
@@ -515,7 +535,7 @@ class Workspace extends EventEmitter {
 
 	// Write a source's new text (ours: the watcher ignores it by hash).
 	write(src, text) {
-		fs.writeFileSync(src.abs, text);
+		writeAtomic(src.abs, text);
 		src.text = text;
 		src.hash = sha1(text);
 		this.readHeader(src);
@@ -629,10 +649,7 @@ class Workspace extends EventEmitter {
 			this.changed([{ ...gone, text: null }]);
 			return { file: e.file, label: e.label, dropped: false, guide: null };
 		}
-		if (disk === null) {
-			fs.mkdirSync(path.dirname(e.abs), { recursive: true });
-			fs.writeFileSync(e.abs, e[want]);
-		}
+		if (disk === null) writeAtomic(e.abs, e[want]);
 		const src = this.sources.get(e.abs) || this.load(this.packOf(e.abs), e.abs);
 		this.write(src, e[want]);
 		from.pop();
@@ -662,8 +679,7 @@ class Workspace extends EventEmitter {
 		if (start === null) throw new PlannerError(`${found.file} did not exist when the planner started; delete it yourself`, 'conflict');
 		const label = `Revert ${found.file}`;
 		if (!fs.existsSync(found.abs)) {
-			fs.mkdirSync(path.dirname(found.abs), { recursive: true });
-			fs.writeFileSync(found.abs, start);
+			writeAtomic(found.abs, start);
 			const src = this.load(found.pack, found.abs);
 			this.reindex();
 			this.undoStack.push({ abs: src.abs, file: src.file, before: null, after: start, label });

@@ -328,3 +328,42 @@ test('object property names are not verbs or ops', () => {
 	// `constructor` is no standing: the faction then has none.
 	assert.ok(messages.some((m) => m.startsWith('`rep` needs a faction and a standing')), messages.join('; '));
 });
+
+test('in every guide of guides/, an edit leaves every line it does not touch byte-identical', (t) => {
+	const failures = [];
+	let edits = 0;
+	// The lines of `after` that differ from `before` other than line `keep` (1-based).
+	const touched = (before, after, keep) => {
+		const a = before.split('\n');
+		const b = after.split('\n');
+		if (a.length !== b.length) return [`${a.length} lines became ${b.length}`];
+		return a.flatMap((l, i) => (i !== keep - 1 && l !== b[i] ? [`line ${i + 1}`] : []));
+	};
+	for (const file of findGuideFiles(OFFICIAL_DIR)) {
+		const text = fs.readFileSync(path.join(OFFICIAL_DIR, file), 'utf8');
+		const m = model(text, file);
+		assert.ok(m.ok, file);
+		const check = (what, op, keep) => {
+			edits++;
+			const out = apply(text, op, file).text;
+			const bad = keep === null ? (out === text ? [] : ['the text changed']) : touched(text, out, keep);
+			if (bad.length) failures.push(`${file}: ${what}: ${bad.slice(0, 3).join(', ')}`);
+		};
+		for (const step of m.steps) {
+			// No-op edits write nothing at all.
+			check(`setStep ${step.index} to its own title`, { op: 'setStep', step: step.index, title: step.title }, null);
+			for (const goal of step.goals) {
+				if (goal.fields.r !== undefined) {
+					check(`setRadius ${goal.line} to its own r`, { op: 'setRadius', line: goal.line, r: goal.fields.r }, null);
+					check(`setRadius ${goal.line}`, { op: 'setRadius', line: goal.line, r: goal.fields.r + 1 }, goal.line);
+				}
+				if (goal.fields.x !== undefined && goal.spans && goal.spans.coords) {
+					check(`setCoords ${goal.line}`, { op: 'setCoords', line: goal.line, x: (goal.fields.x + 1) % 100, y: goal.fields.y, yards: 40 }, goal.line);
+				}
+			}
+		}
+	}
+	t.diagnostic(`${edits} edits`);
+	assert.ok(edits > 5000, `only ${edits} edits`);
+	assert.deepEqual(failures.slice(0, 5), []);
+});

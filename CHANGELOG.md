@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.2.5 (unreleased)
+
+### For guide authors
+
+- `node tools/polestar.js planner` opens the route planner in the browser:
+  pick a guide and a character and the route plays on the game's own map
+  (the minimap terrain of every continent, `planner art` fetches it once),
+  step by step or as the whole 1-60 route, with each step's time split into
+  travel, combat, talking and waiting, the level, XP, quest log and items, the
+  spawn areas and the path walked, in Polestar's own look with the game's
+  icons (class icons for class trainers, item icons for items, the quest
+  markers). Edit mode drags waypoints, adds a `goto` with a click, bends a
+  travel line into a new labelled waypoint ("Cross the bridge") and edits any
+  goal or step in a form; each edit is written into the `.guide` file at once,
+  with undo, a list of changes and a Compile button. It works on another pack
+  given its folder. `planner mcp` serves the same commands to an AI assistant
+  over MCP (and the page offers them to WebMCP), so an assistant can read a
+  route's timings, change its steps and play them in the open page while you
+  watch. With the navigation grid built (`nav build`) its walks follow the
+  terrain for the character's class and level (around mountains, into caves
+  and buildings, up lifts, swimming, mounted from 40), cached between runs; a
+  walk the grid cannot route stays a marked straight line, and the map's
+  Layers add Walkable and Arrow aids. The planner, and the navigation grid
+  that grew out of it, are Nivek_Gaming's idea (@Nivek_Gaming on X): thank
+  you, Nivek.
+- `node tools/polestar.js nav build` builds a navigation grid from the
+  Forever client's own terrain, water and building, cave and doodad collision
+  (fetched from wago.tools like the planner's map art; local only, about
+  750 MB): where a character can walk, which slopes it can climb, which drops
+  it survives, where it swims and which lifts it can ride. `nav path` prints
+  the route between two map points.
+- `node tools/polestar.js nav aids` generates the arrow's zone crossings,
+  open borders and cave, building and climb approach chains from the
+  navigation grid (`data/local/nav/aids.json`, the crossings file format;
+  local only, never shipped) and, with `--report`, measures how many guide
+  legs the arrow walks straight over ground the grid cannot walk, without
+  and with them. Not used by the addon yet: with these aids the arrow still
+  walks straight inside a zone, and some cities' gates are not yet found.
+
+### For contributors
+
+- The guide parser records where each part of a goal line sits
+  (`goal.spans`, non-enumerable, so compiled output is unchanged); the
+  planner's edits (`tools/lib/planner/source.js`) rewrite only the tokens they
+  change, and every goal line in `guides/` survives fields -> text -> parse
+  (`tests/planner-source.test.js`).
+- `tools/lib/planner/`: map coordinates (`geo.js`), the
+  playback clock on the simulator's priors (`timeline.js`), and the map art
+  pipeline (`art/`: a wago.tools CASC file cache, BLP2 and BC1 decoding, a BC1
+  encoder, the minimap pyramid and the unfogged zone art), each with tests.
+
 ## 0.2.4 (unreleased)
 
 ### For players
@@ -322,40 +373,6 @@
   versions ignore the fields). In a Leveling guide lint warns on such a goal
   unless it is `optional` or the guide trains the profession (and levels it
   to the quest's rank) first.
-- `node tools/polestar.js planner` opens the route planner in the browser:
-  pick a guide and a character and the route plays on the game's own map
-  (the minimap terrain of every continent, `planner art` fetches it once),
-  step by step or as the whole 1-60 route, with each step's time split into
-  travel, combat, talking and waiting, the level, XP, quest log and items, the
-  spawn areas and the path walked, in Polestar's own look with the game's
-  icons (class icons for class trainers, item icons for items, the quest
-  markers). Edit mode drags waypoints, adds a `goto` with a click, bends a
-  travel line into a new labelled waypoint ("Cross the bridge") and edits any
-  goal or step in a form; each edit is written into the `.guide` file at once,
-  with undo, a list of changes and a Compile button. It works on another pack
-  given its folder. `planner mcp` serves the same commands to an AI assistant
-  over MCP (and the page offers them to WebMCP), so an assistant can read a
-  route's timings, change its steps and play them in the open page while you
-  watch. With the navigation grid built (`nav build`) its walks follow the
-  terrain for the character's class and level (around mountains, into caves
-  and buildings, up lifts, swimming, mounted from 40), cached between runs; a
-  walk the grid cannot route stays a marked straight line, and the map's
-  Layers add Walkable and Arrow aids. The planner, and the navigation grid
-  that grew out of it, are Nivek_Gaming's idea (@Nivek_Gaming on X): thank
-  you, Nivek.
-- `node tools/polestar.js nav build` builds a navigation grid from the
-  Forever client's own terrain, water and building, cave and doodad collision
-  (fetched from wago.tools like the planner's map art; local only, about
-  750 MB): where a character can walk, which slopes it can climb, which drops
-  it survives, where it swims and which lifts it can ride. `nav path` prints
-  the route between two map points.
-- `node tools/polestar.js nav aids` generates the arrow's zone crossings,
-  open borders and cave, building and climb approach chains from the
-  navigation grid (`data/local/nav/aids.json`, the crossings file format;
-  local only, never shipped) and, with `--report`, measures how many guide
-  legs the arrow walks straight over ground the grid cannot walk, without
-  and with them. Not used by the addon yet: with these aids the arrow still
-  walks straight inside a zone, and some cities' gates are not yet found.
 
 ### For contributors
 
@@ -462,15 +479,6 @@
 - `trainers build` reads the same guides as `compile`: Recorder drafts under
   `guides/drafts/` and build output under `dist/` no longer add class
   trainers to `trainers.json` (thanks meellm).
-- The guide parser records where each part of a goal line sits
-  (`goal.spans`, non-enumerable, so compiled output is unchanged); the
-  planner's edits (`tools/lib/planner/source.js`) rewrite only the tokens they
-  change, and every goal line in `guides/` survives fields -> text -> parse
-  (`tests/planner-source.test.js`).
-- `tools/lib/planner/`: map coordinates and ADT tile math (`geo.js`), the
-  playback clock on the simulator's priors (`timeline.js`), and the map art
-  pipeline (`art/`: a wago.tools CASC file cache, BLP2 and BC1 decoding, a BC1
-  encoder, the minimap pyramid and the unfogged zone art), each with tests.
 
 ## 0.2.3 (2026-10-14)
 

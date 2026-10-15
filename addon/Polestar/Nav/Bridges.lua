@@ -14,8 +14,11 @@ Nav.bridges = Bridges
 local tomtomUid      -- TomTom waypoint we own
 local blizzardSet = false
 
+-- Real TomTom only: Nav/Journey.lua's stand-in answers other addons' calls
+-- by setting our target, so mirroring into it would loop.
 local function tomtom()
 	local T = TomTom
+	if T == Nav.tomtomShim then return nil end
 	if type(T) == "table" and type(T.AddWaypoint) == "function" and type(T.RemoveWaypoint) == "function" then return T end
 end
 
@@ -30,6 +33,9 @@ local function syncTomTom(target)
 		tomtomUid = nil
 	end
 	if not (T and target and ns.Get("nav.tomtom")) then return end
+	-- A waypoint followed from TomTom's arrow (Nav/Journey.lua) is in TomTom already.
+	local J = Nav.journey
+	if J and J.IsTomTomTarget(target) then return end
 	local map, x, y = Nav.LiveCoords(target)
 	if not map then return end
 	tomtomUid = T:AddWaypoint(map, x / 100, y / 100, {

@@ -3,9 +3,11 @@
 //
 // The Quality of Life module's reference data, from data/forever: Spirit
 // Healer spawns (the NPC named exactly "Spirit Healer", so test and
-// battleground variants stay out) with their world positions, and the NPC IDs
+// battleground variants stay out) with their world positions, the NPC IDs
 // of every flight master (recognising a flight master's gossip without
-// reading its localized option text). Writes addon/Polestar/QoL/Data.lua.
+// reading its localized option text), and the NPC IDs of every reagent
+// vendor (a vendor whose subtitle names reagents; Nav/Nearby.lua's
+// `/polestar near reagents`). Writes addon/Polestar/QoL/Data.lua.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -14,6 +16,8 @@ const { header } = require('../lib/generated');
 
 const { ROOT, DATA } = require('../lib/paths');
 const HEALER_NAME = 'Spirit Healer';
+const REAGENT = /\breagents?\b/i; // "Reagent Vendor", "Reagents & Poisons", "Reagent Supplies"...
+const NOT_LIVE = /\bPTR\b/; // test-realm turn-in NPCs
 const MERGE_YARDS = 25; // two spawn points this close are one healer
 
 const usage = `usage: node tools/polestar.js qol build [--data <dir>] [--lua <file>]
@@ -53,24 +57,32 @@ function buildQolData({ npcs, frames }) {
 		}
 	}
 	healers.sort((a, b) => (a.c ?? 99) - (b.c ?? 99) || a.map - b.map || a.x - b.x || a.y - b.y);
-	const flightMasters = Object.values(npcs)
-		.filter((n) => (n.roles || []).includes('flightmaster'))
-		.map((n) => n.id)
-		.sort((a, b) => a - b);
-	return { healers, flightMasters, skipped };
+	const ids = (keep) =>
+		Object.values(npcs)
+			.filter(keep)
+			.map((n) => n.id)
+			.sort((a, b) => a - b);
+	const flightMasters = ids((n) => (n.roles || []).includes('flightmaster'));
+	const reagentVendors = ids((n) => (n.roles || []).includes('vendor') && REAGENT.test(n.subName || '') && !NOT_LIVE.test(n.subName));
+	return { healers, flightMasters, reagentVendors, skipped };
 }
 
-function toLua({ healers, flightMasters }) {
+// Twelve ids per line, each line tab-indented twice.
+function idRows(list) {
+	const rows = [];
+	for (let i = 0; i < list.length; i += 12) rows.push('\t\t' + list.slice(i, i + 12).join(', ') + ',');
+	return rows;
+}
+
+function toLua({ healers, flightMasters, reagentVendors }) {
 	const rows = healers.map((h) =>
 		h.f === 'e'
 			? `\t\t{${h.c},${round(h.wx, 1)},${round(h.wy, 1)},${h.map},${round(h.x, 2)},${round(h.y, 2)}},`
 			: `\t\t{false,false,false,${h.map},${round(h.x, 2)},${round(h.y, 2)}},`,
 	);
-	const ids = [];
-	for (let i = 0; i < flightMasters.length; i += 12) ids.push('\t\t' + flightMasters.slice(i, i + 12).join(', ') + ',');
 	return [
 		header('lua', 'qol build', 'data/forever (pfQuest, MIT; Blizzard Classic Era map frames)'),
-		`-- The NPC named "${HEALER_NAME}" and every NPC with the flightmaster role.`,
+		`-- The NPC named "${HEALER_NAME}", every NPC with the flightmaster role and every reagent vendor.`,
 		'',
 		'local ADDON, ns = ...',
 		'local QoL = ns.QoL',
@@ -83,7 +95,11 @@ function toLua({ healers, flightMasters }) {
 		'\t},',
 		'\t-- NPC IDs',
 		'\tflightMasters = {',
-		...ids,
+		...idRows(flightMasters),
+		'\t},',
+		'\t-- NPC IDs: vendors whose subtitle names reagents',
+		'\treagentVendors = {',
+		...idRows(reagentVendors),
 		'\t},',
 		'})',
 		'',
@@ -92,7 +108,7 @@ function toLua({ healers, flightMasters }) {
 
 module.exports = {
 	name: 'qol',
-	summary: 'Build the Quality of Life module data (spirit healers, flight masters)',
+	summary: 'Build the Quality of Life module data (spirit healers, flight masters, reagent vendors)',
 	usage,
 	buildQolData,
 	toLua,
@@ -110,7 +126,7 @@ module.exports = {
 		const out = path.resolve(values.lua || path.join(ROOT, 'addon', 'Polestar', 'QoL', 'Data.lua'));
 		fs.mkdirSync(path.dirname(out), { recursive: true });
 		fs.writeFileSync(out, toLua(data));
-		console.log(`qol: ${data.healers.length} spirit healer(s), ${data.flightMasters.length} flight master(s) -> ${path.relative(ROOT, out)}`);
+		console.log(`qol: ${data.healers.length} spirit healer(s), ${data.flightMasters.length} flight master(s), ${data.reagentVendors.length} reagent vendor(s) -> ${path.relative(ROOT, out)}`);
 		if (data.skipped.length) console.log(`qol: ${data.skipped.length} point(s) without a map frame skipped`);
 		return 0;
 	},

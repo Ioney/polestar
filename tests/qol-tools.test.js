@@ -22,6 +22,10 @@ test('qol build: Spirit Healers by exact name, nearby points merged, world yards
 		352: { id: 352, name: 'Dungar Longdrink', roles: ['flightmaster', 'vendor'] },
 		12: { id: 12, name: 'Somebody', roles: ['vendor'] },
 		931: { id: 931, name: 'Ariena Stormfeather', roles: ['flightmaster'] },
+		1275: { id: 1275, name: 'Kyra Boucher', roles: ['vendor'], subName: 'Reagent Vendor' },
+		3335: { id: 3335, name: 'Hagrus', roles: ['vendor'], subName: 'Reagents & Poisons' },
+		4000: { id: 4000, name: 'Crate Clerk', roles: ['vendor'], subName: 'PTR - Crate Turn-In Reagents' },
+		4001: { id: 4001, name: 'Not A Vendor', subName: 'Reagent Vendor' },
 	};
 	const d = buildQolData({ npcs, frames: FRAMES });
 	assert.equal(d.healers.length, 2, '(50,50) and (50.5,50) are 10 yd apart: one healer');
@@ -30,17 +34,19 @@ test('qol build: Spirit Healers by exact name, nearby points merged, world yards
 	const corner = d.healers.find((h) => h.x === 10);
 	assert.deepEqual([corner.wx, corner.wy], [-800, 800]);
 	assert.deepEqual(d.flightMasters, [352, 931]);
+	assert.deepEqual(d.reagentVendors, [1275, 3335], 'vendors whose subtitle names reagents; test-realm clerks stay out');
 	assert.equal(d.skipped.length, 1, 'a map without a frame is reported');
 
 	const lua = toLua(d);
 	assert.match(lua, /QoL\.SetData\(\{/);
 	assert.match(lua, /\{0,0,0,1429,50,50\},/);
 	assert.match(lua, /352, 931,/);
+	assert.match(lua, /reagentVendors = \{\n\t\t1275, 3335,\n\t\},/);
 });
 
 test('qol build: generated Lua loads into the addon namespace', () => {
 	const d = buildQolData({
-		npcs: { 1: { id: 1, name: 'Spirit Healer', spawns: { 1429: { f: 'e', pts: [[50, 50]] } } }, 2: { id: 2, name: 'F', roles: ['flightmaster'] } },
+		npcs: { 1: { id: 1, name: 'Spirit Healer', spawns: { 1429: { f: 'e', pts: [[50, 50]] } } }, 2: { id: 2, name: 'F', roles: ['flightmaster'] }, 3: { id: 3, name: 'R', roles: ['vendor'], subName: 'Reagents' } },
 		frames: FRAMES,
 	});
 	const file = path.join(os.tmpdir(), `qol-data-${process.pid}.lua`);
@@ -51,10 +57,10 @@ test('qol build: generated Lua loads into the addon namespace', () => {
 				local ns = { QoL = {} }
 				function ns.QoL.SetData(t) ns.data = t end
 				loadfile(${JSON.stringify(file)})("Polestar", ns)
-				emit({ healers = #ns.data.spiritHealers, first = ns.data.spiritHealers[1], fm = ns.data.flightMasters })
+				emit({ healers = #ns.data.spiritHealers, first = ns.data.spiritHealers[1], fm = ns.data.flightMasters, reagents = ns.data.reagentVendors })
 			`,
 		}).emitted;
-		assert.deepEqual(r, { healers: 1, first: [0, 0, 0, 1429, 50, 50], fm: [2] });
+		assert.deepEqual(r, { healers: 1, first: [0, 0, 0, 1429, 50, 50], fm: [2], reagents: [3] });
 	} finally {
 		fs.rmSync(file, { force: true });
 	}

@@ -1,6 +1,9 @@
 -- Death helper: as a ghost, compare running back to the corpse with
 -- resurrecting at the nearest Spirit Healer (spawns from Data.lua), point
--- the arrow at the faster choice and say why in one line.
+-- the arrow at the faster choice and say why in one line. A point picked
+-- before dying (a map click, /way, another addon's) comes back once alive,
+-- if the guide is still on the same step. The arrow's route to either is
+-- planned like any target (Nav/Travel.lua walks a ghost there on foot).
 --
 -- Cost of each choice in seconds: the run (ghost run speed) and, for the
 -- Spirit Healer, resurrection sickness (none through level 10, then one
@@ -106,6 +109,7 @@ local current          -- "corpse" | "healer" | nil
 local mine             -- the Nav target we set
 local ticker
 local noted = false
+local previous -- the picked target (Nav override) the death helper replaced
 
 -- Pure decision, for tests and the tick: choice, corpseSeconds, healerSeconds, sickness.
 function Death.Decide(corpseYards, healerYards, speed, level, previous)
@@ -144,6 +148,9 @@ local function point(a)
 	local Nav = ns.Nav
 	if not (Nav and Nav.SetTarget) then return end
 	if Nav.GetTarget and mine and Nav.GetTarget() == mine and a.choice == current then return end
+	-- A point picked before dying (a map click, /way, another addon's) is
+	-- handed back after resurrecting.
+	if not mine and Nav.IsOverride and Nav.IsOverride() then previous = Nav.GetTarget() end
 	local C = ns.Compat
 	local ok
 	if a.choice == "corpse" then
@@ -221,14 +228,19 @@ local function release()
 	end
 	local Nav = ns.Nav
 	if mine and Nav and Nav.GetTarget and Nav.GetTarget() == mine then
-		if Nav.ReleaseTarget then
+		local E = ns.Engine
+		local step = E and E.GetStepIndex and E.GetStepIndex() or nil
+		if previous and previous.stepIndex == step then
+			-- Picked before dying, on the same guide step: hand it back.
+			Nav.SetTarget(previous.map, previous.x, previous.y, previous.label, previous.f)
+		elseif Nav.ReleaseTarget then
 			Nav.ReleaseTarget()
 		else
-			local wp = ns.Engine and ns.Engine.GetWaypoint and ns.Engine.GetWaypoint()
+			local wp = E and E.GetWaypoint and E.GetWaypoint()
 			if wp then Nav.SetTarget(wp.map, wp.x, wp.y, wp.label, wp.f) elseif Nav.ClearTarget then Nav.ClearTarget() end
 		end
 	end
-	mine, current, noted = nil, nil, false
+	mine, current, noted, previous = nil, nil, false, nil
 	if ns.Pins and ns.Pins.ClearLayer then ns.Pins.ClearLayer(LAYER) end
 	pinned.choice, pinned.hx, pinned.cx = nil, nil, nil
 end

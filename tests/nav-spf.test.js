@@ -559,3 +559,76 @@ local function answer(...)
 end
 `;
 
+test('Z1: the Engine waypoint\'s height goes to the walking engine with the target; a hand-set target has none', () => {
+	const [out] = run(`${Z_WAYPOINT}
+		local r = {}
+		nav.place(0, 0)
+		goal(-66)
+		N.Sample()
+		r.withZ = { calls(), fake.last().to.z, select(4, N.GetTargetWorld()) }
+		answer({ 0, 0, 34 }, { 0, -590, -66 }, { 0, -600, -66 })
+		r.kept = { aim()[1], calls() }
+		target(0, -600, "By hand")
+		N.Sample()
+		r.hand = { calls(), fake.last().to.z == nil, select(4, N.GetTargetWorld()) == nil }
+		emit(r)`);
+	assert.deepEqual(out.withZ, [1, -66, -66], 'the target keeps the waypoint\'s z, and the search asks for it');
+	assert.deepEqual(out.kept, ['travel', 1], 'a path ending on that floor is used as it is');
+	assert.deepEqual(out.hand, [2, true, true], 'the same spot set by hand: searched again, without a height');
+});
+
+test('Z2: a search with the height that fails is asked once more without it, and that answer stands', () => {
+	const [out] = run(`${Z_WAYPOINT}
+		local r = {}
+		nav.place(0, 0)
+		goal(-66)
+		N.Sample()
+		fake.fail("unreachable")
+		r.retry = { calls(), fake.last().to.z == nil }
+		fake.resolve(0, 0, 100, -300, 0, -600)
+		r.used = aim()
+		r.calls = calls()
+		nav.place(-60, -200)
+		stub.advance(3)
+		aim()
+		r.stray = { calls(), fake.last().to.z == nil }
+		emit(r)`);
+	assert.deepEqual(out.retry, [2, true], 'one more search, without z');
+	assert.deepEqual(out.used.slice(0, 2), ['travel', Math.round(Math.hypot(100, 300) + Math.hypot(100, 300))], 'its path is the arrow\'s');
+	assert.equal(out.calls, 2);
+	assert.deepEqual(out.stray, [3, true], 'later searches for the same goal stay without the height');
+});
+
+test('Z2: a failure without the height too is the straight arrow, with no third search', () => {
+	const [out] = run(`${Z_WAYPOINT}
+		nav.place(0, 0)
+		goal(-66)
+		N.Sample()
+		fake.fail("unreachable")
+		fake.fail("unreachable")
+		emit({ aim(), calls() })`);
+	assert.deepEqual(out, [['travel', 600, 0, -600], 2]);
+});
+
+test('Z2: a path searched with the height that ends more than 30 yards above or below it is asked again without it', () => {
+	const [out] = run(`${Z_WAYPOINT}
+		local r = {}
+		nav.place(0, 0)
+		goal(-66)
+		N.Sample()
+		-- the last engine point before the goal stands on the street, 100 yd above
+		answer({ 0, 0, 34 }, { 50, -300, 34 }, { 0, -590, 34 }, { 0, -600, -66 })
+		r.retry = { calls(), fake.last().to.z == nil, aim()[3] }
+		fake.resolve(0, 0, 100, -300, 0, -600)
+		r.used = aim()
+		goal(-50, 2)
+		N.Sample()
+		r.within = calls()
+		answer({ 0, 0, 34 }, { 0, -590, -25 }, { 0, -600, -50 })
+		r.close = { calls(), aim()[1] }
+		emit(r)`);
+	assert.deepEqual(out.retry, [2, true, 0], 'asked again without z; the off-floor path is not followed');
+	assert.deepEqual(out.used.slice(2), [100, -300], 'the answer without z is the arrow\'s path');
+	assert.equal(out.within, 3, 'another goal with a height: searched with it');
+	assert.deepEqual(out.close, [3, 'travel'], '25 yards off is within 30: kept');
+});

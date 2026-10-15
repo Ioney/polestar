@@ -430,3 +430,43 @@ test('g (row 6, C17): no search starts in combat, the old path is kept, and one 
 	assert.ok(out.follow.from < 0.01);
 	assert.equal(out.follow.index, 2, 'the arrow follows it');
 });
+
+test('Z1: a guide goal at Andron Gant (Undercity, Rogues\' Quarter) is walked to his floor with his height, to the street above without it', { skip }, (t) => {
+	const out = run(t, `
+		local r = {}
+		local ANDRON = { 1389.34, 347.315, -65.96 } -- his CMaNGOS spawn; the guides' 54.81,76.33 (Era) on the Undercity's map
+		-- The walk itself, from Brill: without route planning the arrow searches player to target
+		-- (with it, Undercity's entrance chain takes the last stretch straight).
+		Polestar.Set("nav.travel", false)
+		place(1420, 2269, 260, 34)
+		-- The last search for Andron's point, once it is in: what it was asked and the
+		-- engine's last point before the goal itself (the floor the walk ends on).
+		local function toAndron()
+			local n = 0
+			local function last()
+				for i = #finds, 1, -1 do
+					local f = finds[i]
+					if dist(f.to[1], f.to[2], ANDRON[1], ANDRON[2]) < 1 then return f end
+				end
+			end
+			aim()
+			while not (last() and last().done) and n < 400 do stub.advance(0.05); aim(); n = n + 1 end
+			local f = last()
+			local pts = f and f.points or {}
+			return { z = f and f.to[3], endZ = #pts >= 3 and r1(pts[#pts - 1].z) or nil, asked = #finds, aim = aim().state }
+		end
+		Polestar.Fire("WAYPOINT_CHANGED", { map = 1458, x = 54.81, y = 76.33, f = "e", z = ANDRON[3], label = "Andron Gant", kind = "turnin", r = 5 })
+		r.withZ = toAndron()
+		r.targetZ = select(4, N.GetTargetWorld())
+		N.SetTarget(1458, 54.81, 76.33, "Andron Gant", "e")
+		r.withoutZ = toAndron()
+		emit(r)`);
+	assert.equal(out.targetZ, -65.96, 'the target keeps the waypoint\'s height');
+	assert.equal(out.withZ.z, -65.96, 'the walk to him is searched with his height');
+	assert.equal(out.withZ.asked, 1, 'once: the path it found ends near that height');
+	assert.ok(Math.abs(out.withZ.endZ - out.withZ.z) <= 4, `and ends on his floor (${out.withZ.endZ})`);
+	assert.equal(out.withZ.aim, 'travel');
+	assert.equal(out.withoutZ.z, undefined, 'the same point set by hand has no height');
+	assert.equal(out.withoutZ.asked, 2);
+	assert.ok(out.withoutZ.endZ > 20, `and ends on the street ${out.withoutZ.endZ - out.withZ.endZ} yd above him (${out.withoutZ.endZ})`);
+});

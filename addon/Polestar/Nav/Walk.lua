@@ -16,6 +16,14 @@
 -- the straight arrow. No engine, nav.navRouting off, no walking data for the
 -- continent, or a failed search: the straight arrow, as without this file.
 --
+-- Floors: a goal at the target's point carries the target's height (a guide
+-- goal at an NPC or object: its spawn's z, Nav.GetTargetWorld) to Path.Find,
+-- so the path ends on that floor (an Undercity quarter, not the street
+-- above). A search with the height that fails, or whose path ends more than
+-- Z_OFF yards above or below it (the last engine point before the goal), is
+-- asked once more without it, and that answer is the one used. A hand-set
+-- target has no height: searched as before.
+--
 -- Steps: the walk is split at the lifts Nav/Transit.lua knows, and keeps the
 -- crossings, approach chains and guide gotos the planner already makes legs
 -- of. Gates, bridges, tunnels, passes and cave or building mouths become
@@ -43,7 +51,7 @@ local ADDON, ns = ...
 local Nav = ns.Nav
 
 local type, ipairs, pcall = type, ipairs, pcall
-local sqrt, huge = math.sqrt, math.huge
+local sqrt, huge, abs = math.sqrt, math.huge, math.abs
 
 local Walk = {}
 Nav.walk = Walk
@@ -57,6 +65,7 @@ local POINT_REACH = 5       -- yards: a path point is passed
 local LOOKAHEAD = 12        -- path segments looked at ahead of the current one
 local GOAL_MOVED = 1        -- yards: the goal is another one
 local FAIL_RETRY, FAIL_MOVED = 15, 25 -- a failed search is asked again this late, this far away
+local Z_OFF = 30            -- yards: a path ending this far above or below the goal's height missed its floor
 
 ---------------------------------------------------------------------------
 -- The engine (Polestar_Nav's API.lua hands it over as Polestar_NavEngine)
@@ -93,6 +102,8 @@ end
 ---------------------------------------------------------------------------
 
 local gc, gx, gy             -- the goal searched for (nil: none)
+local gzFor                  -- the target's height when that goal was taken (targetZ; false: none)
+local gz                     -- the height searches still send (nil: none, or dropped after a miss)
 local token                  -- the live search's identity
 local job                    -- its Cancel handle
 local ptsX, ptsY, ptsZ = {}, {}, {} -- the path, reused (z false where unknown)
@@ -129,7 +140,7 @@ end
 function Walk.Clear()
 	local had, c, x, y = gc ~= nil, gc, gx, gy
 	cancel()
-	gc, gx, gy, count, idx, wanted, failed = nil, nil, nil, 0, 1, false, false
+	gc, gx, gy, gzFor, gz, count, idx, wanted, failed = nil, nil, nil, nil, nil, 0, 1, false, false
 	if had then
 		restore(c, x, y)
 		changed()
@@ -169,6 +180,26 @@ local function playerZ(pc)
 	return nil
 end
 
+-- The target's height when the goal (c, x, y) is the target's own point.
+local function targetZ(c, x, y)
+	local tc, tx, ty, tz = Nav.GetTargetWorld()
+	if tz == nil or tc ~= c then return nil end
+	local dx, dy = x - tx, y - ty
+	if dx * dx + dy * dy > GOAL_MOVED * GOAL_MOVED then return nil end
+	return tz
+end
+
+-- A path searched with height z that ends on another floor: its last engine
+-- point before the goal (the last point is the goal itself) is more than
+-- Z_OFF yards from z.
+local function offFloor(points, z)
+	for i = #points - 1, 2, -1 do
+		local pz = type(points[i]) == "table" and points[i].z
+		if type(pz) == "number" then return abs(pz - z) > Z_OFF end
+	end
+	return false
+end
+
 local function ask(P, pc, px, py)
 	wanted = true
 	if inCombat() then return end -- after combat, on the next sample
@@ -182,10 +213,18 @@ local function ask(P, pc, px, py)
 	local mine = {}
 	token = mine
 	local ghost = Nav.travel and Nav.travel.IsGhost and Nav.travel.IsGhost() or nil
-	local ok, handle = pcall(P.Find, pc, { x = px, y = py, z = playerZ(pc) }, { x = gx, y = gy }, function(points)
+	local z = gz
+	local ok, handle = pcall(P.Find, pc, { x = px, y = py, z = playerZ(pc) }, { x = gx, y = gy, z = z }, function(points)
 		if token ~= mine then return end
 		token, job = nil, nil
-		if type(points) == "table" and #points > 0 then
+		local got = type(points) == "table" and #points > 0
+		if z and (not got or offFloor(points, z)) then
+			-- Once more without the height; that answer stands.
+			gz = nil
+			ask(P, pc, px, py)
+			return
+		end
+		if got then
 			failed = false
 			took(points)
 			if Walk.Split then Walk.Split() end
@@ -198,6 +237,10 @@ local function ask(P, pc, px, py)
 	end, ghost) -- a ghost walks on water
 	if not ok then
 		token = nil
+		if z then
+			gz = nil
+			return ask(P, pc, px, py)
+		end
 		failed, failAt, failX, failY = true, askedAt, px, py
 		return
 	end
@@ -224,10 +267,12 @@ function Walk.Aim(pc, px, py, goalC, goalX, goalY, handmade)
 		if gc then Walk.Clear() end
 		return nil
 	end
-	if gc ~= goalC or gx == nil or (goalX - gx) * (goalX - gx) + (goalY - gy) * (goalY - gy) > GOAL_MOVED * GOAL_MOVED then
+	local tz = targetZ(goalC, goalX, goalY) or false
+	if gc ~= goalC or gx == nil or tz ~= gzFor or (goalX - gx) * (goalX - gx) + (goalY - gy) * (goalY - gy) > GOAL_MOVED * GOAL_MOVED then
 		local had = count > 0
 		cancel()
 		gc, gx, gy, count, idx, failed = goalC, goalX, goalY, 0, 1, false
+		gzFor, gz = tz, tz or nil
 		askedAt = -huge
 		if had then changed() end
 		ask(P, pc, px, py)

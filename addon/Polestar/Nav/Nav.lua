@@ -167,15 +167,17 @@ local override    -- point picked with Nav.SetTarget, kept until the step change
 local dismissed   -- engine waypoint hidden by ClearTarget until the Engine moves on
 local target      -- what we guide to: override, else engine waypoint
 local tC, tX, tY  -- target in world space (nil until resolvable)
+local tZ         -- its height: the Engine waypoint's `z` (a guide goal at an NPC or object), else nil
 local arrived = false
 local firing = false
 local ticker
 
 local function resolve()
-	tC, tX, tY = nil, nil, nil
+	tC, tX, tY, tZ = nil, nil, nil, nil
 	local C = ns.Compat
 	if target and C and C.MapToWorld then
 		tC, tX, tY = C.MapToWorld(target.map, target.x, target.y, target.f)
+		if tC and type(target.z) == "number" then tZ = target.z end
 	end
 end
 
@@ -255,10 +257,11 @@ function Nav.IsOverride()
 	return override ~= nil and target == override
 end
 
--- World position of the target: continentID, wx, wy (nil if unresolved).
+-- World position of the target: continentID, wx, wy, then its height when
+-- it has one (an Engine waypoint's `z`; a hand-set target has none). nil if unresolved.
 function Nav.GetTargetWorld()
 	if target and not tC then resolve() end
-	return tC, tX, tY
+	return tC, tX, tY, tZ
 end
 
 -- A point's coordinates in the live (Forever) frame of its own map, for

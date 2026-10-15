@@ -747,13 +747,16 @@ function Spots.waypointGoal()
 end
 
 -- map, x, y, f of the goal (the chosen candidate's when it has candidates,
--- the chosen spawn area's when it has spots), then that area's radius in yards.
+-- the chosen spawn area's when it has spots), then that area's radius in
+-- yards, then the goal's height `z` (the compiler's, from the spawn of the
+-- NPC or object it stands for) only while the position is the goal's own
+-- point: a candidate or a spawn area elsewhere has none.
 local function posOf(goal)
 	local c = chosen(goal)
 	if c then return c.map, c.x, c.y, c.f end
 	local s = goal.spots and Spots.get(goal)
-	if s then return goal.map, s.x, s.y, goal.f, s.r end
-	return goal.map, goal.x, goal.y, goal.f
+	if s then return goal.map, s.x, s.y, goal.f, s.r, s.x == goal.x and s.y == goal.y and goal.z or nil end
+	return goal.map, goal.x, goal.y, goal.f, nil, goal.z
 end
 
 local function isCandidate(goal, npc)
@@ -1579,14 +1582,15 @@ end
 -- counts the whole area as reached); `r` stays the arrival margin. An area
 -- objective's waypoint also carries `search` (Nav never says arrived),
 -- `spots` (the goal's list, for the map marks) and `spot` (its index).
+-- `z`: the goal's height at that point (posOf), for the walking engine's floor.
 local function waypointOf(g, goal)
-	local map, x, y, f, area = posOf(goal)
+	local map, x, y, f, area, z = posOf(goal)
 	if not (map and x and y) or not goalApplies(goal) or unavailableFor(goal) or Own.goalSkipped(current, g)
 		or goalDone(current, g, goal) then return nil end
 	local verb, subject, _, detail = describe(goal)
 	local many = area and #goal.spots > 1
 	return {
-		map = map, x = x, y = y, f = f,
+		map = map, x = x, y = y, f = f, z = z,
 		label = (goalText(goal, verb, subject, detail)),
 		stepIndex = current, goalIndex = g, kind = goal.t,
 		r = goal.r or DEFAULT_RADIUS, area = area,

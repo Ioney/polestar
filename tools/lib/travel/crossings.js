@@ -34,7 +34,7 @@ const LIMITS = {
 };
 
 const KEYS = {
-	top: ['schema', 'frame', 'source', 'crossings', 'open', 'chains'],
+	top: ['schema', 'frame', 'source', 'build', 'crossings', 'open', 'chains'],
 	crossing: ['id', 'a', 'b', 'ab', 'ba', 'oneWay'],
 	end: ['map', 'x', 'y', 'radius', 'offMap'],
 	open: ['a', 'b', 'oneWay'],

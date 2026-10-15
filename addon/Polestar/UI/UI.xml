@@ -3,6 +3,7 @@
 	<Script file="ZoneArt.lua"/>
 	<Script file="ZoneArtOverlays.lua"/>
 	<Script file="GuideFrame.lua"/>
+	<Script file="JourneyPanel.lua"/>
 	<Script file="GearPick.lua"/>
 	<Script file="Picker.lua"/>
 	<Script file="Lookup.lua"/>

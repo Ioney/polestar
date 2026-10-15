@@ -317,6 +317,24 @@ function pickerScene(script) {
 }
 // Three guides open as tabs, the leveling one active.
 const TABS = 'uistub.openTabs({ { uistub.elwynn, 3 }, { uistub.tailoring, 2 }, { uistub.stormwindRep, 2 } }, 1)';
+// A route for the journey panel (UI/JourneyPanel.lua): the Nav fake gains a
+// three-leg trip (Shortest Path Forever's example, 36:48 and 8.0k yd), the
+// Great Lift's departures untimed until `timed`.
+const JOURNEY = `Polestar.RegisterDefaults("nav", { distanceUnit = "yards", journeySteps = true, journeyOpen = true })
+local Nav = Polestar.Nav
+JR = { ci = 1, ps = 670, py = 3000, timed = false }
+JR.legs = {
+	{ kind = "walk", step = "lift", label = "Walk to The Great Lift, Top", seconds = 670, yards = 3000, to = { name = "The Great Lift, Top" } },
+	{ kind = "lift", lift = 7, side = "top", label = "Take The Great Lift", seconds = 25, yards = 60, to = { name = "The Great Lift, Bottom" } },
+	{ kind = "walk", label = "Walk to Silithus", seconds = 1513, yards = 4940, to = { name = "Silithus" } },
+}
+Nav.travel = { Active = function() return true end, Progress = function() return JR.ps, JR.py end }
+function Nav.GetRoute() return JR.legs, JR.ci end
+Nav.prompts = { MenuItems = function() return { { text = "Mark this leg done" } } end, OpenMenu = function() end }
+Polestar.Transit = { Now = function() return 1000 end, NextDeparture = function() return 15, 10, JR.timed end }
+uistub.target = { label = "Silithus" }
+${TABS}
+Polestar.Fire("ROUTE_CHANGED", JR.legs)`;
 const HOVER = 'PolestarGuideFrame.IsMouseOver = function() return true end; Polestar.UI.GuideFrame.HoverIn()';
 const RECORDER = `stub.addonsLoaded.Polestar_Recorder = true
 PolestarRecorderDB = { enabled = true, current = "s2", sessions = {
@@ -781,6 +799,15 @@ uistub.setStep(4)`,
 f.candidates = { { npcName = "Young Wolf", map = 1429, x = 46, y = 38.5 } }
 uistub.update()`,
 			},
+		],
+	},
+	{
+		file: 'journey.svg',
+		title: 'The journey under the focus: walking to the Great Lift (36:48, 8.0k yd, the lift untimed); on the lift, timed; collapsed to its totals',
+		panels: [
+			{ roots: GUIDE, script: JOURNEY },
+			{ roots: GUIDE, script: `${JOURNEY}; JR.timed = true; JR.ci = 2; JR.ps = 25; JR.py = 60; Polestar.Fire("ROUTE_ADVANCED", JR.legs, 2)` },
+			{ roots: GUIDE, script: `${JOURNEY}; Polestar.Set("nav.journeyOpen", false)` },
 		],
 	},
 	{

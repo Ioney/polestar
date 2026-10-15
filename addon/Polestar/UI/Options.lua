@@ -192,6 +192,11 @@ local BUILTIN = {
 	} },
 	{ page = GUIDE, tab = L["Arrow & routes"], section = L["Routes"], controls = {
 		{ kind = "toggle", key = "nav.travel", label = L["Plan travel routes"], help = L["Flights, boats and your hearthstone when they are faster. Off: the arrow points straight at the goal."] },
+		{ kind = "toggle", key = "nav.navRouting", label = L["Walk real paths"], help = L["The arrow follows paths on the ground around cliffs, water and walls, with the walking maps of Shortest Path Forever by Cillian Berragan. Off: it points straight at each stop."] },
+		{ kind = "toggle", key = "nav.routeLines", label = L["Route lines"], help = L["The way to the goal on the world map and the minimap: dots where you walk, lines where you fly, sail or ride, the legs after this one fainter. Drawn as Shortest Path Forever by Cillian Berragan draws them."] },
+		{ kind = "toggle", key = "nav.teleports", label = L["Class teleports"], help = L["Routes may start with a Teleport spell you know (a mage's city teleports, a druid's Moonglade) when it is faster. A city teleport needs a Rune of Teleportation in your bags."],
+			disabled = function() return not ns.Get("nav.travel") end },
+		{ kind = "toggle", key = "nav.shareTransit", label = L["Share boat times"], help = L["Riding a boat, zeppelin, tram or lift times it; your guild and group get those times and you get theirs, so the arrow can say when the next one leaves."] },
 	} },
 	{ page = GUIDE, tab = L["Arrow & routes"], section = L["Other waypoints"], controls = {
 		{ kind = "toggle", key = "nav.blizzardWaypoint", label = L["Blizzard waypoint"], help = L["Also set the game's own map pin and tracking."] },
@@ -316,10 +321,11 @@ local BUILTIN = {
 	{ page = MAP, key = "map", icon = "icon-explore", order = 30, tab = L["Guide & quests"], section = L["Guide"],
 		subtitle = L["What Polestar draws on the world map and the minimap. Quest, rare and travel icons start off."], controls = {
 		{ kind = "toggle", key = "nav.worldPins", label = L["Guide pins on the world map"],
-			help = L["The arrow's target, the stops of its travel route, the step's other goals and the areas their mobs and objects spawn in."] },
-		{ kind = "toggle", key = "nav.minimapPins", label = L["Guide pin on the minimap"], help = L["The arrow's target and the areas it spawns in."] },
+			help = L["The arrow's target, the stops of its travel route, the step's other goals, the areas their mobs and objects spawn in, and the route lines."] },
+		{ kind = "toggle", key = "nav.minimapPins", label = L["Guide pin on the minimap"], help = L["The arrow's target, the areas it spawns in, and the route line."] },
 		{ kind = "toggle", key = "nav.trailDots", label = L["Trail dots along the travel route"],
-			help = L["Moving dots from you to the target on the world map and the minimap, along the travel route."] },
+			help = L["Moving dots from you to the target on the world map and the minimap, along the travel route, while route lines are off."],
+			disabled = function() return ns.Get("nav.routeLines") end },
 	} },
 	{ page = MAP, tab = L["Guide & quests"], section = L["Quest markers"], controls = {} },
 	{ page = MAP, tab = L["Rares & travel"], section = L["Rares and treasures"], controls = {} },

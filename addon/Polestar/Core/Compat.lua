@@ -96,6 +96,34 @@ function Compat.IsOnTaxi()
 	return readable(UnitOnTaxi and UnitOnTaxi("player")) and true or false
 end
 
+-- The player's world position from UnitPosition: wx (north), wy (west), z
+-- (nil when unread) and the instance map id, or nil while the client keeps it
+-- secret or hides it. The one place UnitPosition is read.
+function Compat.GetPlayerUnitPosition()
+	if not UnitPosition then return nil end
+	local ok, x, y, z, instance = pcall(UnitPosition, "player")
+	if not ok then return nil end
+	x, y, z, instance = readable(x), readable(y), readable(z), readable(instance)
+	if type(x) ~= "number" or type(y) ~= "number" or instance == nil then return nil end
+	return x, y, type(z) == "number" and z or nil, instance
+end
+
+-- A spell's cooldown as GetTime start and duration; 0, 0 when it is ready
+-- or the client keeps it secret.
+function Compat.GetSpellCooldown(spellID)
+	local start, duration
+	if C_Spell and C_Spell.GetSpellCooldown then
+		local ok, info = pcall(C_Spell.GetSpellCooldown, spellID)
+		if ok and type(info) == "table" then start, duration = info.startTime, info.duration end
+	elseif GetSpellCooldown then
+		local ok, s, d = pcall(GetSpellCooldown, spellID)
+		if ok then start, duration = s, d end
+	end
+	start, duration = readable(start), readable(duration)
+	if type(start) ~= "number" or type(duration) ~= "number" then return 0, 0 end
+	return start, duration
+end
+
 function Compat.InCombat()
 	if InCombatLockdown and InCombatLockdown() then return true end
 	return readable(UnitAffectingCombat and UnitAffectingCombat("player")) and true or false
@@ -354,6 +382,28 @@ function Compat.MapName(uiMapID)
 	local X = ns.Codex
 	local z = X and X.IsLoaded and X.IsLoaded() and X.Zone and X.Zone(uiMapID)
 	return z and z.name or nil
+end
+
+-- Opening the world map at a map: C_Map.OpenWorldMap, the client's own
+-- opener, when it has one. The global OpenWorldMap called from addon code
+-- leaves the map frame tainted, so every later open in combat is blocked and
+-- the quest pins are lost until a reload (Shortest Path Forever 1.8.0, #92;
+-- docs/superpowers/specs/2026-10-15-spf-issues.md C3); it is only the
+-- fallback on a client without C_Map.OpenWorldMap. Never in combat.
+--   Compat.CanOpenWorldMap() -> bool ; Compat.OpenWorldMap(uiMapID) -> opened
+local function worldMapOpener()
+	if C_Map and C_Map.OpenWorldMap then return C_Map.OpenWorldMap end
+	return OpenWorldMap
+end
+
+function Compat.CanOpenWorldMap()
+	return worldMapOpener() ~= nil
+end
+
+function Compat.OpenWorldMap(uiMapID)
+	local open = worldMapOpener()
+	if not open or Compat.InCombat() then return false end
+	return pcall(open, uiMapID) and true or false
 end
 
 -- The continent-type uiMap (Enum.UIMapType.Continent = 2) a map belongs to,

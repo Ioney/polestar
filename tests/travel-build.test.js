@@ -66,7 +66,12 @@ test('flight masters, flights, transports and inns come from the client tables a
 	// counts once (60 s at the far end + 30 s = 90 s docked per loop).
 	const ferry = travel.transports.find((t) => t.id === 'boat-feathermoon');
 	assert.match(ferry.source, /899 yd \/ 3188 yd between stops, 90 s docked per loop/);
-	assert.deepEqual([ferry.ab, ferry.ba, ferry.waitA], [30, 106, 113]);
+	// The real loop matches its sniffed period, so the CMaNGOS timetable
+	// replaces the estimate (accelerating, docked dwell, 10 s to board); the
+	// toy Booty Bay loop does not, and keeps its estimate.
+	assert.match(ferry.source, /timetable: path-303/);
+	assert.deepEqual([ferry.ab, ferry.ba, ferry.waitA], [60, 137, 169]);
+	assert.ok(warnings.some((w) => /boat-bootybay-ratchet: TaxiPath 241 modelled period \d+ ms is not the sniffed 350818 ms; estimate kept/.test(w)));
 
 	assert.deepEqual(travel.inns.map((i) => [i.location, i.npc, i.map]), [['Goldshire', 295, 1429], ['Sentinel Hill', 8931, 1436]]);
 	assert.ok(warnings.some((w) => /Booty Bay: Innkeeper Skindle \(6807\) does not spawn on map 1434/.test(w)), 'an innkeeper on the wrong map is dropped');
@@ -98,7 +103,7 @@ test('works with no recordings at all', async () => {
 	}
 });
 
-test('the CLI writes byte-identical travel.json and TravelData.lua on every run', async () => {
+test('the CLI writes byte-identical travel.json, TravelData.lua and FlightPaths.lua on every run', async () => {
 	const dirs = [tmp(), tmp()];
 	try {
 		for (const dir of dirs) {
@@ -107,20 +112,39 @@ test('the CLI writes byte-identical travel.json and TravelData.lua on every run'
 				[
 					path.join(ROOT, 'tools', 'polestar.js'), 'travel', 'build', '--offline',
 					'--data', path.join(FIX, 'data'), '--recordings', path.join(FIX, 'recordings'), '--sources', path.join(FIX, 'sources'),
-					'--json', path.join(dir, 'travel.json'), '--lua', path.join(dir, 'TravelData.lua'),
+					'--json', path.join(dir, 'travel.json'), '--lua', path.join(dir, 'TravelData.lua'), '--flight-lua', path.join(dir, 'FlightPaths.lua'),
 				],
 				{ encoding: 'utf8' },
 			);
 			assert.equal(r.status, 0, r.stderr + r.stdout);
 			assert.match(r.stdout, /2 flight masters, 2 flights, 3 transports, 2 inns/);
 		}
-		for (const f of ['travel.json', 'TravelData.lua']) {
+		for (const f of ['travel.json', 'TravelData.lua', 'FlightPaths.lua']) {
 			assert.equal(fs.readFileSync(path.join(dirs[0], f), 'utf8'), fs.readFileSync(path.join(dirs[1], f), 'utf8'), f);
 		}
 		const lib = await buildTravel(opts());
 		assert.equal(fs.readFileSync(path.join(dirs[0], 'TravelData.lua'), 'utf8'), lib.lua);
+		assert.equal(fs.readFileSync(path.join(dirs[0], 'FlightPaths.lua'), 'utf8'), lib.flightLua);
 	} finally {
 		for (const d of dirs) fs.rmSync(d, { recursive: true, force: true });
+	}
+});
+
+test('with --lua and no --flight-lua the CLI writes FlightPaths.lua beside it, never into the addon', () => {
+	const dir = tmp();
+	const committed = path.join(ROOT, 'addon', 'Polestar', 'Maps', 'FlightPaths.lua');
+	const before = fs.readFileSync(committed, 'utf8');
+	try {
+		const r = spawnSync(process.execPath, [
+			path.join(ROOT, 'tools', 'polestar.js'), 'travel', 'build', '--offline',
+			'--data', path.join(FIX, 'data'), '--recordings', path.join(FIX, 'recordings'), '--sources', path.join(FIX, 'sources'),
+			'--json', path.join(dir, 'travel.json'), '--lua', path.join(dir, 'TravelData.lua'), '--travel-addon', path.join(dir, 'PT'),
+		], { encoding: 'utf8' });
+		assert.equal(r.status, 0, r.stderr + r.stdout);
+		assert.ok(fs.existsSync(path.join(dir, 'FlightPaths.lua')));
+		assert.equal(fs.readFileSync(committed, 'utf8'), before, 'the committed file is untouched');
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
 	}
 });
 

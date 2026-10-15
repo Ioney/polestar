@@ -19,8 +19,9 @@ const usage = `usage: node tools/polestar.js travel build [options]
 build: the flight network (Blizzard Classic Era TaxiNodes/TaxiPath/TaxiPathNode
 via wago.tools), boats/zeppelins/tram (plus the ships WoW Forever added, from
 the Forever client's TaxiPathNode), inns, learned walking paths and zone
-crossings learned from recordings -> data/forever/travel.json and
-addon/Polestar/Nav/TravelData.lua. With the optional local crossings file
+crossings learned from recordings -> data/forever/travel.json,
+addon/Polestar/Nav/TravelData.lua and the flights' tracks in
+addon/Polestar/Maps/FlightPaths.lua. With the optional local crossings file
 (data/local/crossings.json, validated) it also writes the local data addon
 addon/Polestar_Travel (installed when built, never packaged).
 
@@ -34,6 +35,8 @@ addon/Polestar_Travel (installed when built, never packaged).
   --travel-addon <dir> Polestar_Travel output (default: addon/Polestar_Travel)
   --json <file>        travel.json output (default: <data>/travel.json)
   --lua <file>         TravelData.lua output (default: addon/Polestar/Nav/TravelData.lua)
+  --flight-lua <file>  FlightPaths.lua output (default: addon/Polestar/Maps/FlightPaths.lua;
+                       with --lua, FlightPaths.lua beside that file)
 
 route: run the addon's own planner (Nav/Travel.lua + TravelData.lua, plus
 Polestar_Travel when built) under Lua 5.1 between two Era-frame map points
@@ -86,6 +89,7 @@ async function build(rest) {
 			'travel-addon': { type: 'string' },
 			json: { type: 'string' },
 			lua: { type: 'string' },
+			'flight-lua': { type: 'string' },
 		},
 	});
 	const dataDir = path.resolve(values.data || DATA);
@@ -101,13 +105,16 @@ async function build(rest) {
 	});
 	const jsonOut = path.resolve(values.json || path.join(dataDir, 'travel.json'));
 	const luaOut = path.resolve(values.lua || path.join(ROOT, 'addon', 'Polestar', 'Nav', 'TravelData.lua'));
+	// A named TravelData.lua (tests, trial builds) keeps the flights' tracks beside it, never in the addon.
+	const flightOut = path.resolve(values['flight-lua'] || (values.lua ? path.join(path.dirname(luaOut), 'FlightPaths.lua') : path.join(ROOT, 'addon', 'Polestar', 'Maps', 'FlightPaths.lua')));
 	const travelAddonDir = path.resolve(values['travel-addon'] || path.join(ROOT, 'addon', TRAVEL_ADDON));
-	writeTravel(result, { jsonOut, luaOut, travelAddonDir });
+	writeTravel(result, { jsonOut, luaOut, flightOut, travelAddonDir });
 	const c = result.travel.counts;
 	console.log(`travel: build ${result.travel.build}: ${c.taxiNodes} flight masters, ${c.flights} flights, ${c.transports} transports, ${c.inns} inns, ${c.pathNodes} learned path nodes / ${c.pathEdges} edges, ${c.recordedCrossings} recorded crossings`);
 	for (const w of result.warnings) console.log(`warning: ${w}`);
 	console.log(`wrote ${path.relative(process.cwd(), jsonOut)}`);
 	console.log(`wrote ${path.relative(process.cwd(), luaOut)}`);
+	console.log(`wrote ${path.relative(process.cwd(), flightOut)}`);
 	if (result.travelAddon) {
 		const names = { 0: 'Eastern Kingdoms', 1: 'Kalimdor' };
 		for (const [cont, n] of Object.entries(result.localCounts)) {

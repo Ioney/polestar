@@ -12,6 +12,11 @@
 // WoW Forever (1.60+ builds of the beta product):
 //   TaxiPathNode   the ship loops Forever added (Stormwind Harbor, Southshore,
 //                  Powderfuse Port)
+// WoW Forever, for the timetables (tools/lib/travel/timetable.js):
+//   TransportAnimation   lift and tram tracks (time index, offset from the spawn)
+//   SpellEffect, SpellName, SpellMisc, SpellCastTimes, SpellReagents,
+//   SkillLineAbility     class teleports: destination kind, name, cast time,
+//                        reagents, and that a class learns the spell
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -20,9 +25,11 @@ const { compareVersions, tableUrl, BUILDS_URL, PRODUCTS } = require('../data/wag
 
 const TABLES = ['TaxiNodes', 'TaxiPath', 'TaxiPathNode', 'AreaTrigger'];
 const FOREVER_TABLES = ['TaxiPathNode'];
+const TRANSIT_TABLES = ['TransportAnimation', 'SpellEffect', 'SpellName', 'SpellMisc', 'SpellCastTimes', 'SpellReagents', 'SkillLineAbility'];
 const SPECS = {
 	era: { ...PRODUCTS.era, tables: TABLES },
 	forever: { ...PRODUCTS.forever, tables: FOREVER_TABLES },
+	transit: { ...PRODUCTS.forever, tables: TRANSIT_TABLES },
 };
 
 // Columns each table must have; checked so a schema change fails loudly
@@ -32,6 +39,13 @@ const COLUMNS = {
 	TaxiPath: ['ID', 'FromTaxiNode', 'ToTaxiNode', 'Cost'],
 	TaxiPathNode: ['PathID', 'NodeIndex', 'ContinentID', 'Loc_0', 'Loc_1', 'Loc_2', 'Flags', 'Delay'],
 	AreaTrigger: ['ID', 'ContinentID', 'Pos_0', 'Pos_1', 'Pos_2'],
+	TransportAnimation: ['TransportID', 'TimeIndex', 'Pos_0', 'Pos_1', 'Pos_2'],
+	SpellEffect: ['SpellID', 'DifficultyID', 'Effect', 'ImplicitTarget_1'],
+	SpellName: ['ID', 'Name_lang'],
+	SpellMisc: ['SpellID', 'DifficultyID', 'CastingTimeIndex'],
+	SpellCastTimes: ['ID', 'Base'],
+	SpellReagents: ['SpellID', 'Reagent_0', 'ReagentCount_0'],
+	SkillLineAbility: ['Spell', 'ClassMask'],
 };
 
 function checkColumns(table, rows, where) {
@@ -40,11 +54,15 @@ function checkColumns(table, rows, where) {
 	if (missing.length) throw new Error(`${where}: ${table} lacks column(s) ${missing.join(', ')}`);
 }
 
+// A build is a folder name: digits and dots only, so no listed or given
+// version can step outside the cache.
+const BUILD_RE = /^\d+(\.\d+)+$/;
+
 function cachedBuilds(cacheRoot, spec) {
 	if (!fs.existsSync(cacheRoot)) return [];
 	return fs
 		.readdirSync(cacheRoot)
-		.filter((b) => /^\d+(\.\d+)+$/.test(b) && spec.family.test(b) && spec.tables.every((t) => fs.existsSync(path.join(cacheRoot, b, `${t}.csv`))))
+		.filter((b) => BUILD_RE.test(b) && spec.family.test(b) && spec.tables.every((t) => fs.existsSync(path.join(cacheRoot, b, `${t}.csv`))))
 		.sort(compareVersions);
 }
 
@@ -57,12 +75,12 @@ async function fetchText(fetchImpl, url) {
 async function latestBuild(fetchImpl, spec) {
 	const builds = JSON.parse(await fetchText(fetchImpl, BUILDS_URL));
 	const listed = Array.isArray(builds[spec.key]) ? builds[spec.key].map((b) => b.version).filter(Boolean) : [];
-	const list = listed.filter((v) => spec.family.test(v));
+	const list = listed.filter((v) => typeof v === 'string' && BUILD_RE.test(v) && spec.family.test(v));
 	if (!list.length) throw new Error(`${BUILDS_URL}: no ${spec.key} ${spec.family.source} builds listed`);
 	return list.sort(compareVersions)[list.length - 1];
 }
 
-// product: "era" (TABLES) or "forever" (FOREVER_TABLES).
+// product: "era" (TABLES), "forever" (FOREVER_TABLES) or "transit" (TRANSIT_TABLES, Forever builds).
 // -> { build, tables: { TaxiNodes: rows, ... }, urls, warnings }
 async function loadTravelTables({ sourcesDir, build, offline = false, fetchImpl = globalThis.fetch, log = () => {}, product = 'era' }) {
 	const spec = SPECS[product];
@@ -85,6 +103,7 @@ async function loadTravelTables({ sourcesDir, build, offline = false, fetchImpl 
 			}
 		}
 	}
+	if (!BUILD_RE.test(String(chosen))) throw new Error(`travel sources: "${chosen}" is not a build version`);
 	const dir = path.join(cacheRoot, chosen);
 	const tables = {};
 	const urls = {};
@@ -106,4 +125,4 @@ async function loadTravelTables({ sourcesDir, build, offline = false, fetchImpl 
 	return { build: chosen, tables, urls, warnings };
 }
 
-module.exports = { loadTravelTables, TABLES, FOREVER_TABLES, COLUMNS };
+module.exports = { loadTravelTables, TABLES, FOREVER_TABLES, TRANSIT_TABLES, COLUMNS };

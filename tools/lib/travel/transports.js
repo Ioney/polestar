@@ -273,6 +273,7 @@ function buildTransports({ tables, foreverTables = null, foreverBuild = null, fo
 		let waitA;
 		let waitB;
 		let source;
+		let ends = null; // the ends' TaxiPathNode stops (boats and zeppelins), for the timetable
 		if (t.kind === 'tram') {
 			const ta = triggers.get(t.a.trigger);
 			const tb = triggers.get(t.b.trigger);
@@ -312,6 +313,7 @@ function buildTransports({ tables, foreverTables = null, foreverBuild = null, fo
 				continue;
 			}
 			a = endpoint(t.a, frames, liveFrames, sa, anchorA, warnings, t.id);
+			ends = { a: { c: sa.c, wx: sa.wx, wy: sa.wy }, b: { c: sb.c, wx: sb.wx, wy: sb.wy } };
 			b = endpoint(t.b, frames, liveFrames, sb, anchorB, warnings, t.id);
 			const fwd = sailBetween(pts, stops, sa, sb);
 			const back = sailBetween(pts, stops, sb, sa);
@@ -339,9 +341,10 @@ function buildTransports({ tables, foreverTables = null, foreverBuild = null, fo
 			waitA: Math.round(waitA),
 			waitB: Math.round(waitB),
 			source,
+			...(ends ? { path: t.path, client: t.client || 'era', stops: ends } : {}),
 		});
 	}
 	return { transports: out, warnings };
 }
 
-module.exports = { buildTransports, TRANSPORTS, TRANSPORT_SPEED, LOAD_SECONDS, ANCHOR_YARDS };
+module.exports = { buildTransports, inZone, TRANSPORTS, TRANSPORT_SPEED, LOAD_SECONDS, ANCHOR_YARDS };

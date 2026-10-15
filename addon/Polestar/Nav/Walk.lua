@@ -395,17 +395,22 @@ function Walk.Stops(pc, px, py)
 		if not used[e] and f.along - lastAlong >= MIN_STEP then
 			local s = { kind = f.kind, name = e.name, zone = e.zone, wx = f.wx, wy = f.wy, r = f.r, along = f.along, seg = f.seg }
 			if f.kind == "lift" then
-				-- The landing the path reaches first is boarded; the ride goes to its pair.
+				-- The landing boarded and the ride to its pair. The side comes from
+				-- the path's height when it has one (K4): a packed lift's two
+				-- landings lie a few yards apart, too close for the order along
+				-- the path to tell them apart; else the landing reached first.
 				local other = packed and e.pair and packed[e.pair]
+				local up = climbs(f.seg)
+				local side = up ~= nil and (up and "bottom" or "top") or e.liftEnd
+				if other and side and e.liftEnd and other.liftEnd == side and e.liftEnd ~= side then
+					e, other = other, e
+					s.name, s.zone = e.name, e.zone
+				end
 				if other then
 					used[other] = true
 					s.endX, s.endY = other.wx, other.wy
 				end
-				s.side = e.liftEnd
-				if not s.side then
-					local up = climbs(f.seg)
-					if up ~= nil then s.side = up and "bottom" or "top" end
-				end
+				s.side = side
 				local id, name = liftId(gc, e.wx, e.wy)
 				if packed then
 					s.lift, s.name = id or e.id, e.lift or name or e.name

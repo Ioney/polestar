@@ -521,3 +521,41 @@ test('K8: a hand-made crossing, chain node or guide goto at the same spot keeps 
 		emit(out)`);
 	assert.deepEqual(out, ['Cross the bridge to Kept Bridge', 'The mouth']);
 });
+
+test("K4: a packed lift's landings a few yards apart: the side boarded comes from the path's height, the ride goes to the other landing", () => {
+	const [out] = run(`
+		nav.useTravelWorld()
+		PolestarNavChokepoints = { [0] = {
+			{ wx = 0, wy = -300, z = 0, r = 6, kind = "lift", name = "Ruins", zone = "Testshire", lift = "Undervator", liftEnd = "bottom", pair = 2 },
+			{ wx = 0, wy = -308, z = 90, r = 6, kind = "lift", name = "Ruins", zone = "Testshire", lift = "Undervator", liftEnd = "top", pair = 1 },
+		} }
+		local function liftLeg()
+			for _, l in ipairs(N.GetRoute()) do if l.kind == "lift" then return l end end
+		end
+		local r = {}
+		nav.place(0, 0)
+		target(0, -600)
+		N.Sample()
+		local job = fake.last()
+		job.callback({ { map = 0, x = 0, y = 0, z = 90 }, { map = 0, x = 0, y = -200, z = 90 }, { map = 0, x = 0, y = -304, z = 45 },
+			{ map = 0, x = 0, y = -400, z = 0 }, { map = 0, x = 0, y = -600, z = 0 } }, 1, job)
+		local l = liftLeg()
+		r.down = { N.GetRoute()[1].label, l.side, l.to.wy }
+		emit(r)`);
+	assert.deepEqual(out.down, ['Walk to Undervator, Top', 'top', -300], 'going down: board at the top landing, ride to the bottom one');
+});
+
+// Floors (docs/NAV_QA.md Z1-Z3): a guide goal at an NPC or object carries its
+// spawn's height (`z`, the compiler's) on the Engine's waypoint, and the walk
+// to it is searched with that height.
+const Z_WAYPOINT = `
+local m, x, y = nav.mapPoint(0, -600)
+local function goal(z, step) nav.setWaypoint({ map = m, x = x, y = y, z = z, label = "Andron", stepIndex = step or 1, goalIndex = 1, kind = "turnin", r = 5 }) end
+-- Answer the last search with points { x, y, z }, ...
+local function answer(...)
+	local job, pts = fake.last(), {}
+	for i, p in ipairs({ ... }) do pts[i] = { map = job.map, x = p[1], y = p[2], z = p[3] } end
+	job.callback(pts, 100, job)
+end
+`;
+

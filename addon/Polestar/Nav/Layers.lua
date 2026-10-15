@@ -12,7 +12,8 @@
 -- and the trail (Pins.SetTrail): dots from the player along the travel route's lines (each
 -- leg's start where the mode changes, and its end), broken at a Hearthstone (a jump, not a
 -- path) and across continents; without a route, straight to the target (both surfaces).
--- nav.worldPins / nav.minimapPins switch Nav's layers on each surface; nav.trailDots the trail.
+-- nav.worldPins / nav.minimapPins switch Nav's layers on each surface; nav.trailDots the trail,
+-- which stands in only while Maps/RouteLines.lua draws no route (nav.routeLines off).
 
 local ADDON, ns = ...
 local Nav = ns.Nav
@@ -99,6 +100,13 @@ local function updateSpots(world)
 	Pins.SetLayer(SPOTS, pins, { world = true, minimap = false })
 end
 
+-- A leg that ends at a chokepoint (leg.choke = { kind, name }, Travel.lua)
+-- marks it with its glyph; other stops are plain discs.
+local CHOKE_ICON = {
+	lift = "icon-lift", gate = "icon-gate", building = "icon-gate", bridge = "icon-bridge",
+	cave = "icon-cave", tunnel = "icon-cave", pass = "icon-pass",
+}
+
 local function updateRoute(world)
 	local legs, ci
 	if Nav.GetRoute then legs, ci = Nav.GetRoute() end
@@ -108,13 +116,17 @@ local function updateRoute(world)
 	end
 	local pins = {}
 	for i = ci, #legs - 1 do
-		local to, nextLeg = legs[i].to, legs[i + 1]
+		local to, nextLeg, choke = legs[i].to, legs[i + 1], legs[i].choke
+		local icon = type(choke) == "table" and CHOKE_ICON[choke.kind] or nil
+		local place = icon and choke.name
 		local step = format(L["Travel route, step %s"], i .. "/" .. #legs)
 		pins[#pins + 1] = {
 			c = to.c, wx = to.wx, wy = to.wy, color = color("arrow"), priority = 50,
+			icon = icon, backdrop = icon and true or nil,
 			label = nextLeg.label, step = i,
 			tooltip = function(tip)
 				tip:SetText(nextLeg.label or "")
+				if place then tip:AddLine(place, 1, 1, 1) end
 				tip:AddLine(step, 0.7, 0.7, 0.7)
 			end,
 		}
@@ -378,9 +390,11 @@ end
 
 -- The trail's runs: the player, then from the current leg on each leg's start
 -- (unless it walks there) and end; a Hearthstone starts a new run at the inn.
+-- Route lines, when they draw, show the way instead.
 local function updateTrail(world, minimap)
 	local target = Nav.GetTarget()
-	if not (target and ns.Get("nav.trailDots") and (world or minimap)) then
+	local lines = ns.RouteLines and ns.RouteLines.Active()
+	if lines or not (target and ns.Get("nav.trailDots") and (world or minimap)) then
 		Pins.ClearTrail()
 		return
 	end
@@ -438,5 +452,9 @@ Layers.OnTheme = Layers.Update
 ns.On("STEP_UPDATED", Layers.Update)
 ns.On("ROUTE_CHANGED", Layers.Update)
 ns.On("ROUTE_ADVANCED", onAdvanced)
+ns.On("NAV_ROUTE_GEOMETRY", function()
+	local world, minimap = surfaces()
+	updateTrail(world, minimap)
+end)
 
 Nav.RegisterModule(Layers)

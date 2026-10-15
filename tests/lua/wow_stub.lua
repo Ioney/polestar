@@ -268,6 +268,18 @@ function Methods.CreateTexture(self, name, layer, _template, sub)
 	t.layer, t.sublayer = layer or "ARTWORK", sub or 0
 	return t
 end
+-- Lines (a texture between two anchored points, SetThickness wide).
+function Methods.CreateLine(self, name, layer, _template, sub)
+	local t = NewObject("Line", name, self)
+	t.layer, t.sublayer = layer or "ARTWORK", sub or 0
+	return t
+end
+function Methods.SetStartPoint(self, point, rel, x, y) self.startPoint = { point, rel, x or 0, y or 0 } end
+function Methods.SetEndPoint(self, point, rel, x, y) self.endPoint = { point, rel, x or 0, y or 0 } end
+function Methods.GetStartPoint(self) local p = self.startPoint; if p then return p[1], p[2], p[3], p[4] end end
+function Methods.GetEndPoint(self) local p = self.endPoint; if p then return p[1], p[2], p[3], p[4] end end
+function Methods.SetThickness(self, t) self.thickness = t end
+function Methods.GetThickness(self) return self.thickness or 1 end
 function Methods.CreateMaskTexture(self, name, layer)
 	local t = NewObject("MaskTexture", name, self)
 	t.layer = layer or "ARTWORK"

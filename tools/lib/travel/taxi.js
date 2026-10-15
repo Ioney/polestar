@@ -9,12 +9,49 @@
 // can pick on a flight map.
 //
 // A leg is a TaxiPath between two flight masters; its length is the 3D
-// length of its TaxiPathNode points (what the gryphon actually flies).
+// length of its TaxiPathNode points (what the gryphon actually flies). Its
+// track is those points on the ground plane, simplified to TRACK_TOLERANCE
+// yards and rounded to the yard: what the map's route lines draw
+// (Maps/FlightPaths.lua). A path with a teleport or too few points has none.
 
 const { placePoint, round, dist2d, isJump } = require('./geo');
 const { spawnPoints } = require('./entities');
 
 const NPC_MATCH_YARDS = 60;
+const TRACK_TOLERANCE = 10;
+
+// Ramer-Douglas-Peucker on wx, wy: the points within `tolerance` yards of the
+// line through the kept ones are dropped; both ends always stay.
+function simplify(pts, tolerance) {
+	const keep = new Array(pts.length).fill(false);
+	keep[0] = keep[pts.length - 1] = true;
+	const stack = [[0, pts.length - 1]];
+	while (stack.length) {
+		const [a, b] = stack.pop();
+		const A = pts[a], B = pts[b];
+		const dx = B.wx - A.wx, dy = B.wy - A.wy;
+		const len = Math.hypot(dx, dy);
+		let far = -1, worst = tolerance;
+		for (let i = a + 1; i < b; i++) {
+			const P = pts[i];
+			const d = len > 0 ? Math.abs(dx * (A.wy - P.wy) - dy * (A.wx - P.wx)) / len : Math.hypot(P.wx - A.wx, P.wy - A.wy);
+			if (d > worst) { worst = d; far = i; }
+		}
+		if (far > 0) {
+			keep[far] = true;
+			stack.push([a, far], [far, b]);
+		}
+	}
+	return pts.filter((_, i) => keep[i]);
+}
+
+// A path's track: flat [wx, wy, ...] in whole yards, or null.
+function track(pts) {
+	if (pts.length < 2 || pathLength(pts).teleports) return null;
+	const out = [];
+	for (const p of simplify(pts, TRACK_TOLERANCE)) out.push(Math.round(p.wx), Math.round(p.wy));
+	return out;
+}
 
 function num(v) {
 	const n = Number(v);
@@ -139,7 +176,7 @@ function buildTaxi({ tables, frames, npcs, liveFrames }) {
 			warnings.push(`taxi path ${r.ID}: ${from.name} -> ${to.name} has ${pts.length < 2 ? 'no points' : 'a teleport'}; straight line used`);
 			yards = dist2d(from, to);
 		}
-		legs.push({ path: num(r.ID), from: from.id, to: to.id, yards: Math.round(yards), cost: num(r.Cost) || 0 });
+		legs.push({ path: num(r.ID), from: from.id, to: to.id, yards: Math.round(yards), cost: num(r.Cost) || 0, track: track(pts) });
 	}
 	legs.sort((a, b) => a.from - b.from || a.to - b.to || a.path - b.path);
 	// One leg per ordered pair: the shortest when Blizzard lists several.
@@ -161,4 +198,4 @@ function npcMapsAt(npc, frames, liveFrames, c, wx, wy) {
 	return [...maps].sort((a, b) => a - b);
 }
 
-module.exports = { buildTaxi, pathPoints, pathLength, shortName, NPC_MATCH_YARDS };
+module.exports = { buildTaxi, pathPoints, pathLength, shortName, simplify, NPC_MATCH_YARDS, TRACK_TOLERANCE };

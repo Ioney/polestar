@@ -6,6 +6,9 @@
 	<Script file="Coords.lua"/>
 	<Script file="Dungeons.lua"/>
 	<Script file="TravelPins.lua"/>
+	<Script file="FlightPaths.lua"/>
+	<Script file="RouteStrokes.lua"/>
+	<Script file="RouteLines.lua"/>
 	<Script file="FlightTimer.lua"/>
 	<Script file="Instances.lua"/>
 </Ui>

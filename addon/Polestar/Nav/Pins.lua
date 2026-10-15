@@ -18,6 +18,8 @@
 --   Pins.SetTrail(runs, opts)          the travel route's dots; runs = { { live = true, point, ... }, ... },
 --                                      point = { c, wx, wy }; opts = { world = true, minimap = true, color }
 --   Pins.ClearTrail()
+--   Pins.MinimapCursor() -> dNorth, dWest | nil   yards from the player to the cursor on the minimap
+--   Pins.MinimapView() -> radius, facing | nil, square   what the minimap shows (facing nil: north-up)
 --
 -- Positions are converted to world yards once per SetLayer (Era-frame `f = "e"`
 -- included), then to map percent of whatever map the world map shows, and
@@ -1116,6 +1118,39 @@ function Pins.Project(dNorth, dWest, facing, radius, half, rotate, square, limit
 		end
 	end
 	return x, y, false
+end
+
+-- What the minimap shows: radius (yards from its centre to its rim), facing
+-- (radians when it rotates with the player, else nil), square (bool).
+function Pins.MinimapView()
+	local C = ns.Compat
+	local facing = isRotating() and C and C.GetPlayerFacing and C.GetPlayerFacing() or nil
+	return viewRadius(), facing, isSquare()
+end
+
+-- The world delta (dNorth, dWest yards) from the player to the cursor on the
+-- minimap: Pins.Project undone. nil when the cursor is off the minimap's face.
+function Pins.MinimapCursor()
+	if not (Minimap and GetCursorPosition and Minimap.GetCenter) then return nil end
+	local cx, cy = Minimap:GetCenter()
+	if not cx then return nil end
+	local scale = Minimap:GetEffectiveScale()
+	local mx, my = GetCursorPosition()
+	local x, y = mx / scale - cx, my / scale - cy -- east, north, in pixels
+	local half = Minimap:GetWidth() / 2
+	if half <= 0 then return nil end
+	if isSquare() then
+		if max(abs(x), abs(y)) > half then return nil end
+	elseif x * x + y * y > half * half then
+		return nil
+	end
+	local _, facing = Pins.MinimapView()
+	if facing then
+		local c, s = cos(facing), sin(facing)
+		x, y = x * c - y * s, x * s + y * c
+	end
+	local k = (Pins.MinimapView()) / half
+	return y * k, -x * k
 end
 
 local function acquireMinimap()

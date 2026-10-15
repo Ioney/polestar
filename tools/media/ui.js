@@ -112,6 +112,17 @@ const GLYPHS = {
 		poly([[10.6, 5.4], [10.6, 13.2], [5, 13.2]]),
 	),
 	'icon-train': union(poly([[2.2, 5.6], [11, 7.4], [11, 20.6], [2.2, 18.8]]), poly([[21.8, 5.6], [13, 7.4], [13, 20.6], [21.8, 18.8]])),
+	// Chokepoints a walk passes (route stops on the map): a gate with its
+	// portcullis, a bridge over its arch, a cave mouth in a hill, a lift
+	// between its up and down arrows, a pass between two cliffs.
+	'icon-gate': union(
+		line(5, 21, 5, 10.5), line(19, 21, 19, 10.5), arc(12, 10.5, 7, -180, 0),
+		line(9.6, 8, 9.6, 21, 1.6), line(14.4, 8, 14.4, 21, 1.6), line(5, 14.4, 19, 14.4, 1.6),
+	),
+	'icon-bridge': union(line(2.5, 9.5, 21.5, 9.5, 2.6), arc(12, 20.5, 8.5, -180, 0), line(3.5, 9.5, 3.5, 20.5), line(20.5, 9.5, 20.5, 20.5)),
+	'icon-cave': subtract(poly([[1.5, 20.5], [9.6, 4], [13.4, 9.4], [15.8, 6.8], [22.5, 20.5]]), union(dot(12, 20.5, 5), box(12, 21.5, 5, 1))),
+	'icon-lift': union(line(4.5, 12, 19.5, 12, 2.6), poly([[12, 2.5], [17.5, 8.5], [6.5, 8.5]]), poly([[12, 21.5], [17.5, 15.5], [6.5, 15.5]])),
+	'icon-pass': union(poly([[1.5, 21], [1.5, 4], [9.2, 9.4], [10.4, 21]]), poly([[22.5, 21], [22.5, 6], [15, 10.6], [13.6, 21]])),
 	'icon-buy': union(
 		polyline([[2.5, 4.5], [5.4, 4.5], [8, 15.6], [18.6, 15.6]], 2.2),
 		poly([[6.4, 7], [21.4, 7], [19.4, 13.2], [7.8, 13.2]]),

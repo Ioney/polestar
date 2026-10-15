@@ -22,6 +22,7 @@ guide on the real map, step by step, with the clock, the XP and the quest
 log, and edits the .guide files (fields, steps, dragged waypoints): every
 edit is written to the file at once. Our guides/ are always loaded; other
 packs (a folder holding pack.json, as arguments or --pack) come after them.
+Inspired by Nivek_Gaming (@Nivek_Gaming on X): thank you, Nivek.
 
   --port <n>          port on 127.0.0.1 (default ${DEFAULT_PORT}; 0 picks a free one)
   --art <dir>         the map art (default data/local/planner/art)
@@ -129,7 +130,7 @@ async function serve(argv) {
 	ws.lintAll();
 	const guides = [...ws.sources.values()].filter((s) => s.id).length;
 	console.log(`Polestar planner: ${server.url}  (${ws.packs.map((p) => p.id).join(', ')}: ${guides} guides; started in ${Date.now() - t0} ms)`);
-	console.log(`${artNote(ws.artDir)}. Ctrl-C to stop.`);
+	console.log(`${artNote(ws.artDir)}. Inspired by Nivek_Gaming (@Nivek_Gaming on X). Ctrl-C to stop.`);
 	if (o.open) openBrowser(server.url);
 	await untilStopped(async () => {
 		await server.close();

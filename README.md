@@ -679,6 +679,10 @@ node tools/polestar.js planner           # prints http://127.0.0.1:8078/
 node tools/polestar.js planner mcp       # the same commands for an AI agent (MCP over stdio)
 ```
 
+The planner is Nivek_Gaming's idea ([@Nivek_Gaming](https://x.com/Nivek_Gaming)
+on X): his route planning inspired this tool and the navigation grid
+behind it. Thank you, Nivek.
+
 Pick a guide and a character and the route plays on the game's own minimap
 terrain, zone by zone or as the whole 1-60 route across the continents: each
 step's start time and duration split into travel, combat, talking and

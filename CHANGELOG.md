@@ -340,7 +340,9 @@
   terrain for the character's class and level (around mountains, into caves
   and buildings, up lifts, swimming, mounted from 40), cached between runs; a
   walk the grid cannot route stays a marked straight line, and the map's
-  Layers add Walkable and Arrow aids.
+  Layers add Walkable and Arrow aids. The planner, and the navigation grid
+  that grew out of it, are Nivek_Gaming's idea (@Nivek_Gaming on X): thank
+  you, Nivek.
 - `node tools/polestar.js nav build` builds a navigation grid from the
   Forever client's own terrain, water and building, cave and doodad collision
   (fetched from wago.tools like the planner's map art; local only, about

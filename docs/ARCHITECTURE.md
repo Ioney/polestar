@@ -2760,7 +2760,8 @@ no XP or a third of the guide's XP per yard.
 
 `node tools/polestar.js planner [<pack dir>...] [--port 8078] [--nav <dir>]` serves a local
 page (127.0.0.1 only) that plays a guide route on the game's map and edits its
-`.guide` sources.
+`.guide` sources. Inspired by Nivek_Gaming (@Nivek_Gaming on X), whose idea
+the planner and the navigation grid both come from.
 
 - **Coordinates** (`tools/lib/planner/geo.js`): world `{ c, wx, wy }` (the
   client's yards, `c` the instance map), map percent per frame (`f = "e"` Era,

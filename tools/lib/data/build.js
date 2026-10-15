@@ -20,6 +20,7 @@ const { readQuestie, REPO: QUESTIEDB_REPO, QUESTIE_REPO } = require('./questie')
 const { applyQuestie } = require('./questie-merge');
 const { loadWebXp, WFT, FC } = require('./webxp');
 const { loadZoneQuests, applyChangeNotes, fillWowheadXp, applyWowheadFacts, BASE: WOWHEAD } = require('./wowhead');
+const { loadSpawnHeights, HEIGHTS_SOURCE } = require('../travel/cmangos');
 const CORRECTIONS = require('./corrections.json');
 
 // tools/lib/data/corrections.json: quests `set` fields; items `removeDrops`/`removeVendors`; npcs/objects `set`
@@ -75,7 +76,8 @@ function itemDurations(rows, items) {
 }
 
 const { ROOT } = require('../paths');
-// Always written; races.json too when the Forever client tables include ChrRaces, ChrClasses and CharBaseInfo.
+// Always written; races.json too when the Forever client tables include ChrRaces, ChrClasses and CharBaseInfo,
+// spawnz.json when CMaNGOS classic-db's dump is cached or can be fetched (loadSpawnHeights).
 const FILES = ['quests', 'npcs', 'objects', 'items', 'zones', 'map-frames', 'factions', 'instances', 'meta'];
 
 // Id-keyed table, one entry per line. Integer keys enumerate in ascending
@@ -252,6 +254,16 @@ async function buildData(options = {}) {
 	// ItemSparse DurationInInventory, seconds): the timed-item lint reads them.
 	const durations = itemDurations(ft && ft.ItemSparse, norm.items);
 
+	// Spawn heights for the compiler's goal `z` (tools/lib/dsl/heights.js). The
+	// dump is fetched once and cached; without it (--offline, a failed download)
+	// the build goes on without spawnz.json. `classicDb` ({ url, hash }): a test's own dump.
+	let heights = null;
+	try {
+		heights = await loadSpawnHeights({ sourcesDir, offline, fetchImpl: options.fetchImpl, log, ...(options.classicDb || {}) });
+	} catch (err) {
+		warnings.push(`CMaNGOS classic-db spawn heights unavailable (${err.message}); spawnz.json not written, so compiled goals carry no z`);
+	}
+
 	const sources = [
 		{ name: 'pfQuest', url: REPO, revision: pf.revision, license: license.license, copyright: license.copyright, notice: license.notice },
 		{
@@ -318,6 +330,7 @@ async function buildData(options = {}) {
 			sessions: recordings.map((r) => r.file),
 		});
 	}
+	if (heights) sources.push({ ...HEIGHTS_SOURCE });
 
 	const out = {
 		quests: serializeTable(norm.quests),
@@ -329,6 +342,7 @@ async function buildData(options = {}) {
 		factions: serializeTable(factions),
 		instances: serializeTable(instances),
 		...(races ? { races: serializeTable(races) } : {}),
+		...(heights ? { spawnz: heights.text } : {}),
 	};
 	const files = {};
 	for (const name of Object.keys(out)) files[`${name}.json`] = Buffer.byteLength(out[name]);
@@ -347,6 +361,7 @@ async function buildData(options = {}) {
 			factions: Object.keys(factions).length,
 			...(races ? { races: Object.keys(races).length } : {}),
 			...(fwago && fwago.tables.ItemSparse ? { timedItems: durations } : {}),
+			...(heights ? { spawnHeightNpcs: Object.keys(heights.npc).length, spawnHeightObjects: Object.keys(heights.object).length } : {}),
 			recorderOnlyFactions: rec.recorderOnlyFactions,
 			eraSpawnPoints: countPoints(norm.npcs, 'e') + countPoints(norm.objects, 'e'),
 			liveSpawnPoints: countPoints(norm.npcs, 'l') + countPoints(norm.objects, 'l'),
@@ -404,6 +419,8 @@ async function buildData(options = {}) {
 			fs.writeFileSync(`${file}.tmp`, out[name]);
 			fs.renameSync(`${file}.tmp`, file);
 		}
+		// No heights this time: an older spawnz.json would not match the rest.
+		if (!heights) fs.rmSync(path.join(outDir, 'spawnz.json'), { force: true });
 	}
 	return { outDir, out, meta };
 }

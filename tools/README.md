@@ -145,6 +145,7 @@ file's language written by `header()` in `lib/generated.js`:
 | Output | Command | Inputs | In git | Staleness check |
 |---|---|---|---|---|
 | `data/forever/*.json` (quests, npcs, objects, items, zones, map-frames, factions, races, meta) | `data build` | pfQuest, QuestieDB from the installed client, client tables from wago.tools, `data/recordings/*.json`; cached in `data/sources/` | local | `meta.json` records the sources and when |
+| `data/forever/spawnz.json` | `data build` | CMaNGOS classic-db's `creature` and `gameobject` spawns on maps 0 and 1 (the pinned dump, cached in `data/sources/cmangos/`, the rows kept as `spawnz.json` beside it); left out with one warning when `--offline` has no cached dump | local | `meta.json` records classic-db's revision; `compile` reads it for goal heights (`z`) and prints how many goals got one |
 | `data/forever/dungeons.json` | `dungeons build` | the installed dungeon journal addon, `data/forever` | local | none |
 | `data/forever/professions.json` | `profession build` | client tables, `data/forever` items, npcs, objects | local | none |
 | `data/forever/trainers.json` | `trainers build` | `train` goals under `guides/`, `data/recordings`, the curated list, `npcs.json` | local | none |

@@ -427,7 +427,8 @@ describe('wago.tools cache', () => {
 		const online = await fixtureBuild({ offline: false, sourcesDir, fetchImpl: fakeFetch(calls) });
 		assert.match(online.result.meta.sources[1].revision, /1\.15\.10\.2$/);
 		assert.deepEqual(fs.readdirSync(path.join(sourcesDir, 'wago', '1.15.10.2')).sort(), ['AreaTable.csv', 'Faction.csv', 'UiMap.csv', 'UiMapAssignment.csv']);
-		assert.equal(calls.length, 5);
+		assert.equal(calls.filter((u) => u.startsWith('https://wago.tools/')).length, 5);
+		assert.match(online.result.meta.warnings.join('\n'), /classic-db spawn heights unavailable \(GET https:\/\/raw\.githubusercontent\.com\/cmangos\/classic-db\/.*HTTP 404\)/, 'the dump it cannot fetch is a warning');
 
 		const offlineCalls = [];
 		const offline = await fixtureBuild({ offline: true, sourcesDir, fetchImpl: fakeFetch(offlineCalls) });

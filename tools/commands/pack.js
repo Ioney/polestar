@@ -1,6 +1,6 @@
 'use strict';
 // pack: release archives. In the repository: dist/Polestar-<version>.zip
-// (Polestar, Polestar_Guides and the built data addons) and
+// (Polestar, Polestar_Guides, Polestar_Nav and the built data addons) and
 // dist/Polestar_Recorder-<version>.zip, each with the GPL in its first folder
 // (and the player's README.txt in Polestar/), plus dist/SHA256SUMS for both.
 // Given another pack (a folder argument, --pack, or the nearest pack.json):
@@ -20,7 +20,7 @@ const { releaseRefusal, ADDON: CODEX } = require('../lib/codex/pack');
 const usage = `usage: node tools/polestar.js pack [<dir>] [options]
 
 In the repository: compiles our guides, then writes dist/Polestar-<version>.zip
-(Polestar, Polestar_Guides, Polestar_Codex, and Polestar_QuestDB /
+(Polestar, Polestar_Guides, Polestar_Nav, Polestar_Codex, and Polestar_QuestDB /
 Polestar_ItemDB when built), dist/Polestar_Recorder-<version>.zip and
 dist/SHA256SUMS. Polestar/ in the zip also carries LICENSE and README.txt
 (install steps), Polestar_Recorder/ the LICENSE. The Codex must be built
@@ -75,8 +75,10 @@ function readme(version, names) {
 		'   (_classic_beta_ instead of _forever_ on the beta client):',
 		...names.map((n) => `     ${n}`),
 		'   They are all part of Polestar: Polestar_Codex holds what Lookup,',
-		'   Dungeons and Rares show. To update, delete the old Polestar folders',
-		'   there first.',
+		'   Dungeons and Rares show; Polestar_Nav the arrow\'s walking routes',
+		'   (Shortest Path Forever\'s pathing, by Cillian Berragan, GPL-3.0 or',
+		'   later: see its LICENSE and CREDITS.md). To update, delete the old',
+		'   Polestar folders there first.',
 		'2. Quit the game completely and start it again. A /reload does not',
 		'   load new addon folders.',
 		'',
@@ -86,6 +88,10 @@ function readme(version, names) {
 		'Source, issues and documentation: https://github.com/fitzforge/polestar',
 		'Polestar is free software under the GNU General Public License, version 3',
 		'only (LICENSE). The data folders carry their own notices (LICENSE-DATA.txt).',
+		'Portions Copyright (C) 2026 Cillian Berragan (Shortest Path Forever),',
+		'GPL-3.0 or later, adapted with his permission: the route lines, journey',
+		'panel, transit times, travel prompts and alerts in Polestar/ (LICENSE',
+		'names the files) and the walking routes in Polestar_Nav/.',
 		'',
 	].join('\r\n');
 }

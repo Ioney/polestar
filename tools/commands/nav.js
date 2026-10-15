@@ -5,6 +5,9 @@
 // `nav path` routes between two map points on it (tools/lib/nav/path.js);
 // `nav aids` generates the arrow's crossings, open borders and approach
 // chains from it and measures them (tools/lib/nav/aids.js, arrow.js).
+// `nav vendor` / `nav check` copy Shortest Path Forever's walking router and
+// maps into addon/Polestar_Nav and hold them to UPSTREAM.json
+// (tools/lib/nav/vendor.js; docs/ARCHITECTURE.md, "In-game walking routes").
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,10 +15,13 @@ const { parseArgs } = require('../lib/cli');
 const { ROOT, DATA, SOURCES } = require('../lib/paths');
 
 const DEFAULT_DIR = path.join(ROOT, 'data', 'local', 'nav');
+const NAV_ADDON = path.join(ROOT, 'addon', 'Polestar_Nav');
 
 const usage = `usage: node tools/polestar.js nav build [--continents 0,1] [--force] [--offline] [--workers N] [--out <dir>] [--product <p>]
        node tools/polestar.js nav path <map> <x>,<y> <map> <x>,<y> [--class C] [--level N] [--frame era|forever] [--json] [--dir <dir>]
        node tools/polestar.js nav aids [--out <file>] [--lua <file>] [--report] [--continents 0,1] [--workers N] [--reference <file>] [--dir <dir>]
+       node tools/polestar.js nav vendor <shortest-path-forever checkout> [--out <dir>] [--date <YYYY-MM-DD>]
+       node tools/polestar.js nav check [--out <dir>]
 
 build   the navigation grid of every continent map-frames.json names (or
         --continents): client geometry per ADT tile through the CASC cache
@@ -39,7 +45,21 @@ aids    the arrow's aids from the grid (tools/lib/nav/aids.js): zone
         guides with the addon's planner without and with the aids and writes
         aids-report.json and aids-report.md next to --out, comparing with the
         reference crossings file (--reference, default
-        data/local/crossings.json; read only).`;
+        data/local/crossings.json; read only).
+vendor  copies Shortest Path Forever's walking router (Routing/PathGrid.lua,
+        Routing/Path.lua, Routing/PathJobs.lua) and its walking maps (Nav/)
+        from a git checkout of https://github.com/cjber/shortest-path-forever
+        into addon/Polestar_Nav (--out), by Cillian Berragan,
+        GPL-3.0-or-later. The only change is mechanical: the data global
+        ShortestPathForeverPathData becomes PolestarPathData (Polestar always
+        reads its own copy of the maps), and each file gets a header line
+        naming its upstream file, commit, his copyright and licence and the
+        date of the change (GPLv3 section 5a; --date, default today). Only
+        map files named Nav<name>.lua are taken from Nav.xml; any other name
+        stops the copy. Writes UPSTREAM.json (repo, commit, version, vendored
+        date, sha256 of every vendored file). Map files the new commit no
+        longer has are removed. Update CREDITS.md's commit line by hand.
+check   the vendored files match UPSTREAM.json and the transform.`;
 
 const usageError = (msg) => Object.assign(new Error(msg), { exit: 2 });
 
@@ -241,7 +261,38 @@ async function aids(argv) {
 	return 0;
 }
 
-const SUBCOMMANDS = { build, path: route, aids };
+async function vendorCmd(argv) {
+	const { opts: o, positional, error } = parseArgs(argv, { flags: [], options: ['--out', '--date'] });
+	if (error) throw usageError(error);
+	if (positional.length !== 1) throw usageError('nav vendor needs the Shortest Path Forever checkout');
+	const { vendor } = require('../lib/nav/vendor');
+	const out = o.out ? path.resolve(o.out) : NAV_ADDON;
+	let res;
+	try {
+		const src = path.resolve(positional[0]);
+		res = o.date ? vendor(src, out, undefined, o.date) : vendor(src, out);
+	} catch (e) {
+		console.error(`nav vendor failed: ${e.message}`);
+		return 1;
+	}
+	console.log(`vendored ${Object.keys(res.files).length} files from Shortest Path Forever ${res.version || '(no version)'} at ${res.commit} into ${path.relative(process.cwd(), out) || '.'}`);
+	for (const rel of res.removed) console.log(`removed ${rel} (no longer upstream)`);
+	return 0;
+}
+
+async function checkCmd(argv) {
+	const { opts: o, positional, error } = parseArgs(argv, { flags: [], options: ['--out'] });
+	if (error) throw usageError(error);
+	if (positional.length) throw usageError('nav check takes no folder argument');
+	const { checkVendored } = require('../lib/nav/vendor');
+	const problems = checkVendored(o.out ? path.resolve(o.out) : NAV_ADDON);
+	for (const p of problems) console.error(`nav check: ${p}`);
+	if (problems.length) return 1;
+	console.log('nav check: the vendored files match UPSTREAM.json');
+	return 0;
+}
+
+const SUBCOMMANDS = { build, path: route, aids, vendor: vendorCmd, check: checkCmd };
 
 async function run(argv) {
 	const [sub, ...rest] = argv;
@@ -266,4 +317,4 @@ async function run(argv) {
 	}
 }
 
-module.exports = { name: 'nav', summary: 'Terrain navigation from the client geometry: build the grid, route between map points', usage, run };
+module.exports = { name: 'nav', summary: "Terrain navigation from the client geometry (build the grid, route between map points) and Shortest Path Forever's vendored walking router (Polestar_Nav)", usage, run };

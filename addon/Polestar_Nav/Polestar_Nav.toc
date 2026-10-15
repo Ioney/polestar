@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: Polestar Nav
+## Notes: Part of Polestar: walking routes for the arrow, by Shortest Path Forever's pathing (Cillian Berragan, github.com/cjber/shortest-path-forever, used with his permission). Loaded on demand.
+## Author: Polestar; pathing by Cillian Berragan (Shortest Path Forever)
+## Version: 0.2.3
+## Category: Quests
+## LoadOnDemand: 1
+## Dependencies: Polestar
+## X-License: GPL-3.0-or-later
+## X-Website: https://github.com/fitzforge/polestar
+
+Nav\Nav.xml
+Routing\PathGrid.lua
+Routing\Path.lua
+Routing\PathJobs.lua
+API.lua

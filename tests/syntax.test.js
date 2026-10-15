@@ -10,7 +10,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { tocEntries, xmlFiles, ADDONS, ROOT } = require('./helpers/lua');
 
-const ALLOWED_GLOBAL = /^(Polestar|PolestarDB|PolestarCharDB|PolestarRecorderDB|SLASH_POLESTAR\d+|SLASH_POLESTARREC\d+|BINDING_HEADER_POLESTAR|BINDING_NAME_POLESTAR_\w+)$/;
+const ALLOWED_GLOBAL = /^(Polestar|PolestarDB|PolestarCharDB|PolestarRecorderDB|Polestar_NavEngine|PolestarPathData|SLASH_POLESTAR\d+|SLASH_POLESTARREC\d+|SLASH_POLESTARWAY\d+|BINDING_HEADER_POLESTAR|BINDING_NAME_POLESTAR_\w+)$/;
+// Globals one file may write: the TomTom stand-in owns `TomTom` while TomTom is not installed.
+const FILE_GLOBALS = { 'addon/Polestar/Nav/Journey.lua': new Set(['TomTom']) };
 
 function luac() {
 	for (const bin of [process.env.LUAC, 'luac5.1', 'luac'].filter(Boolean)) {
@@ -51,7 +53,8 @@ test('addon code only writes allowlisted globals', { skip: !LUAC && 'luac5.1 not
 	for (const file of luaFiles) {
 		const r = spawnSync(LUAC, ['-l', '-p', file], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
 		for (const m of r.stdout.matchAll(/SETGLOBAL\s+\d+\s+-?\d+\s*;\s*(\S+)/g)) {
-			if (!ALLOWED_GLOBAL.test(m[1])) violations.push(`${path.relative(ROOT, file)}: ${m[1]}`);
+			const own = FILE_GLOBALS[path.relative(ROOT, file).split(path.sep).join('/')];
+			if (!ALLOWED_GLOBAL.test(m[1]) && !(own && own.has(m[1]))) violations.push(`${path.relative(ROOT, file)}: ${m[1]}`);
 		}
 	}
 	assert.deepEqual([...new Set(violations)], []);

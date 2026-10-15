@@ -21,3 +21,9 @@ addon/Polestar/QoL/Data.lua linguist-generated
 addon/Polestar/UI/ZoneArtOverlays.lua linguist-generated
 docs/preview/*.svg linguist-generated
 docs/assets/**/*.svg linguist-generated
+
+# Vendored: Shortest Path Forever's walking router and maps by Cillian Berragan
+# (GPL-3.0-or-later). Update with `node tools/polestar.js nav vendor <checkout>`,
+# never by hand (UPSTREAM.json and tests/nav-vendor.test.js check them).
+addon/Polestar_Nav/Routing/** linguist-vendored
+addon/Polestar_Nav/Nav/** linguist-vendored

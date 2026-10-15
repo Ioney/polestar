@@ -23,10 +23,10 @@ function python(...args) {
 
 const hasPython = spawnSync('python3', ['--version']).status === 0;
 
-// The release always holds a release-safe Codex (`codex build`).
-const RELEASE = ['Polestar', 'Polestar_Guides', 'Polestar_Recorder', 'Polestar_Codex'];
+// The release always holds Polestar_Nav (committed) and a release-safe Codex (`codex build`).
+const RELEASE = ['Polestar', 'Polestar_Guides', 'Polestar_Nav', 'Polestar_Recorder', 'Polestar_Codex'];
 
-test('pack zips Polestar + Polestar_Guides + Polestar_Codex and the recorder separately, reproducibly', { skip: !hasPython && 'python3 not installed' }, async () => {
+test('pack zips Polestar + Polestar_Guides + Polestar_Nav + Polestar_Codex and the recorder separately, reproducibly', { skip: !hasPython && 'python3 not installed' }, async () => {
 	const addons = fakeAddons(tmpdir(), RELEASE);
 	const zips = [];
 	for (const n of [1, 2]) {
@@ -58,6 +58,9 @@ test('pack zips Polestar + Polestar_Guides + Polestar_Codex and the recorder sep
 		'Polestar_Guides/MapFrames.lua',
 		'Polestar_Guides/Pack.lua',
 		'Polestar_Guides/Polestar_Guides.toc',
+		'Polestar_Nav/',
+		'Polestar_Nav/Main.lua',
+		'Polestar_Nav/Polestar_Nav.toc',
 		'Polestar_Codex/',
 		'Polestar_Codex/LICENSE-DATA.txt',
 		'Polestar_Codex/Main.lua',
@@ -82,8 +85,12 @@ test('the Polestar folder in the zip carries the GPL and install steps naming ev
 	assert.match(readme, new RegExp(`^Polestar ${VERSION.replace(/\./g, '\\.')}\r\n`));
 	assert.match(readme, /_forever_\/Interface\/AddOns\//);
 	assert.match(readme, /\/reload does not/);
-	for (const n of ['Polestar', 'Polestar_Guides', 'Polestar_QuestDB', 'Polestar_ItemDB', 'Polestar_Codex']) assert.match(readme, new RegExp(`^ +${n}\r$`, 'm'));
+	for (const n of ['Polestar', 'Polestar_Guides', 'Polestar_Nav', 'Polestar_QuestDB', 'Polestar_ItemDB', 'Polestar_Codex']) assert.match(readme, new RegExp(`^ +${n}\r$`, 'm'));
 	assert.match(readme, /part of Polestar: Polestar_Codex holds what Lookup,/);
+	assert.match(readme, /Polestar_Nav the arrow's walking routes\r\n +\(Shortest Path Forever's pathing, by Cillian Berragan/);
+	// security L12 / review P3-15: the adapted GPL-3.0-or-later code inside Polestar/ is named where it ships.
+	assert.match(readme, /^Portions Copyright \(C\) 2026 Cillian Berragan \(Shortest Path Forever\),\r$/m);
+	assert.match(files['Polestar/LICENSE'].toString('utf8'), /^Portions Copyright \(C\) 2026 Cillian Berragan \(Shortest Path Forever,$/m);
 	assert.doesNotMatch(readme, /^ +Polestar_Recorder\r$/m);
 	assert.doesNotMatch(readme.replace(/\r\n/g, ''), /\n/, 'CRLF line endings throughout');
 });
@@ -106,11 +113,11 @@ test('the release zip includes the built data addons and leaves out ones not bui
 	assert.equal(result, 0, out);
 	assert.match(out, /note: Polestar_ItemDB not built/);
 	const tops = [...new Set(readZip(path.join(dist, `Polestar-${VERSION}.zip`)).map((e) => e.name.split('/')[0]))];
-	assert.deepEqual(tops, ['Polestar', 'Polestar_Guides', 'Polestar_QuestDB', 'Polestar_Codex']);
+	assert.deepEqual(tops, ['Polestar', 'Polestar_Guides', 'Polestar_Nav', 'Polestar_QuestDB', 'Polestar_Codex']);
 	fakeAddons(addons, ['Polestar_ItemDB']);
 	assert.equal((await quiet(() => pack.run(['--guides', GUIDES_DIR, '--data', DATA_DIR, '--addons', addons, '--dist', dist]))).result, 0);
 	const all = [...new Set(readZip(path.join(dist, `Polestar-${VERSION}.zip`)).map((e) => e.name.split('/')[0]))];
-	assert.deepEqual(all, ['Polestar', 'Polestar_Guides', 'Polestar_QuestDB', 'Polestar_ItemDB', 'Polestar_Codex']);
+	assert.deepEqual(all, ['Polestar', 'Polestar_Guides', 'Polestar_Nav', 'Polestar_QuestDB', 'Polestar_ItemDB', 'Polestar_Codex']);
 });
 
 test('pack refuses a release without the Codex, or with a --local-extras one, and writes no zip', async () => {
@@ -256,14 +263,14 @@ test('pack without reference data stops with one error and writes nothing; --no-
 });
 
 test('our release: the guide pack folder is not checked for a TOC before it is generated, and write errors are reported', async () => {
-	const addons = fakeAddons(tmpdir(), ['Polestar', 'Polestar_Recorder', 'Polestar_Codex']);
+	const addons = fakeAddons(tmpdir(), ['Polestar', 'Polestar_Nav', 'Polestar_Recorder', 'Polestar_Codex']);
 	const dist = tmpdir();
 	const ok = await quiet(() => pack.run(['--guides', GUIDES_DIR, '--data', DATA_DIR, '--addons', addons, '--dist', dist]));
 	assert.equal(ok.result, 0, ok.out);
 	assert.doesNotMatch(ok.out, /Polestar_Guides\.toc says version/);
 	assert.ok(fs.existsSync(path.join(addons, 'Polestar_Guides', 'Polestar_Guides.toc')));
 	// A Polestar_Guides folder we did not generate is refused cleanly.
-	const foreign = fakeAddons(tmpdir(), ['Polestar', 'Polestar_Recorder', 'Polestar_Codex']);
+	const foreign = fakeAddons(tmpdir(), ['Polestar', 'Polestar_Nav', 'Polestar_Recorder', 'Polestar_Codex']);
 	fs.mkdirSync(path.join(foreign, 'Polestar_Guides'));
 	fs.writeFileSync(path.join(foreign, 'Polestar_Guides', 'mine.txt'), 'mine\n');
 	const bad = await quiet(() => pack.run(['--guides', GUIDES_DIR, '--data', DATA_DIR, '--addons', foreign, '--dist', tmpdir()]));
@@ -280,7 +287,7 @@ async function packReading(file, text) {
 		return readFileSync.call(this, f, ...rest);
 	};
 	try {
-		const addons = fakeAddons(tmpdir(), ['Polestar', 'Polestar_Recorder', 'Polestar_Codex'], packageVersion());
+		const addons = fakeAddons(tmpdir(), ['Polestar', 'Polestar_Nav', 'Polestar_Recorder', 'Polestar_Codex'], packageVersion());
 		return await quiet(() => pack.run(['--guides', GUIDES_DIR, '--data', DATA_DIR, '--addons', addons, '--dist', tmpdir()]));
 	} finally {
 		fs.readFileSync = readFileSync;

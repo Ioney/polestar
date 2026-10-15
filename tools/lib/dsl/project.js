@@ -236,11 +236,12 @@ function writePackDir(outDir, files) {
 	for (const name of Object.keys(files).sort()) fs.writeFileSync(path.join(outDir, name), files[name]);
 }
 
-// Addon folders of the release: always these, plus the generated data addons
-// when they have been built (each skipped while its folder or TOC is missing;
-// `pack` refuses a release without the Codex, which Lookup, Dungeons and
-// Rares read: tools/lib/codex/pack.js releaseRefusal).
-const RELEASE_ADDONS = ['Polestar', 'Polestar_Guides'];
+// Addon folders of the release: always these (Polestar_Nav is committed:
+// Shortest Path Forever's walking router, `nav vendor`), plus the generated
+// data addons when they have been built (each skipped while its folder or TOC
+// is missing; `pack` refuses a release without the Codex, which Lookup,
+// Dungeons and Rares read: tools/lib/codex/pack.js releaseRefusal).
+const RELEASE_ADDONS = ['Polestar', 'Polestar_Guides', 'Polestar_Nav'];
 const RELEASE_DATA_ADDONS = ['Polestar_QuestDB', 'Polestar_ItemDB', 'Polestar_Codex'];
 
 // -> { names, skipped }: the release addons present under addonsDir, in load order.

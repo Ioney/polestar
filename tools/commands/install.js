@@ -20,10 +20,10 @@ const LOCAL_DATA_ADDONS = ['Polestar_Travel'];
 
 const usage = `usage: node tools/polestar.js install [<dir>] [options]
 
-Installs addon/Polestar and addon/Polestar_Guides, plus the data addons
-Polestar_QuestDB, Polestar_ItemDB and Polestar_Codex when they have been built
-(and with --recorder, addon/Polestar_Recorder) into World of Warcraft: Forever's
-AddOns folder.
+Installs addon/Polestar, addon/Polestar_Guides and addon/Polestar_Nav, plus
+the data addons Polestar_QuestDB, Polestar_ItemDB and Polestar_Codex when they
+have been built (and with --recorder, addon/Polestar_Recorder) into World of
+Warcraft: Forever's AddOns folder.
 
 Given another guide pack (<dir>, --pack, or run inside one) it lints and
 builds that pack into <pack>/dist/<folder>/ instead and installs that

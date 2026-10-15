@@ -3,7 +3,7 @@
 // the lookups the resolver needs. Missing files load as empty tables so a
 // guide made only of explicit names still compiles; the caller is told which
 // files were missing. The optional files (professions, factions, trainers,
-// races, travel) are also treated as missing when they cannot be parsed, so a
+// races, travel, spawnz) are also treated as missing when they cannot be parsed, so a
 // half-built data folder never stops compilation. dungeons.json is not read:
 // its DungeonJournal facts stay local (THIRD_PARTY.md), so a quest only it
 // knows needs its title (and `lvl`) in the guide. The instances (group
@@ -15,7 +15,7 @@ const path = require('node:path');
 const SOLO = require('../sim/solo');
 
 const FILES = ['quests', 'npcs', 'objects', 'items', 'zones', 'map-frames', 'meta'];
-const OPTIONAL = ['professions', 'factions', 'trainers', 'races', 'travel'];
+const OPTIONAL = ['professions', 'factions', 'trainers', 'races', 'travel', 'spawnz'];
 
 // Classic skill lines (game facts), so `skill <Profession> <N>` resolves even
 // without professions.json. Riding (762) is Forever's one riding skill: the
@@ -90,6 +90,9 @@ class Data {
 		this.trainersRaw = raw.trainers || {};
 		this.races = raw.races || {};
 		this.travel = raw.travel || {};
+		// Spawn heights (spawnz.json, CMaNGOS classic-db): { npc, object } ->
+		// id -> [[instance map, x, y, z]], or null without the file (heights.js).
+		this.spawnz = raw.spawnz && typeof raw.spawnz === 'object' && !this.missing.includes('spawnz.json') ? raw.spawnz : null;
 		// Instances from the client's Map/AreaTable/UiMapAssignment (solo.js
 		// loadInstances): { areas, maps } or null. Group content (group.js).
 		this.instances = raw.instances || null;

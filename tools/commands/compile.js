@@ -5,6 +5,7 @@
 const path = require('node:path');
 const { printDiagnostics, plural } = require('../lib/cli');
 const { writePackDir } = require('../lib/dsl/project');
+const { heightCounts } = require('../lib/dsl/heights');
 const { ROOT, DATA } = require('../lib/paths');
 const { packCommand, buildPack } = require('../lib/pack/build');
 
@@ -43,7 +44,7 @@ async function run(argv) {
 	const summary = out.format !== 'json';
 	const { manifest } = pack;
 	const outDir = opts.out ? path.resolve(opts.out) : pack.official ? path.join(ROOT, 'addon', manifest.folder) : path.join(pack.dir, 'dist', manifest.folder);
-	const { guides, diag, sources, files } = buildPack(pack, { dataDir, cache, includeDrafts: !!opts.includeDrafts });
+	const { guides, diag, sources, files, data } = buildPack(pack, { dataDir, cache, includeDrafts: !!opts.includeDrafts });
 	// Write before reporting: a failed write is one more error, so the JSON
 	// document's `ok` matches the exit code.
 	if (!diag.hasErrors()) {
@@ -63,6 +64,9 @@ async function run(argv) {
 		console.log(
 			`compiled ${plural(guides.length, 'guide')} (${plural(steps, 'step')}) from ${plural(sources.length, 'file')} into ${outDir}; ${plural(diag.warnings.length, 'warning')}`,
 		);
+		// Goal heights (tools/lib/dsl/heights.js): how many NPC and object goals got z.
+		const h = heightCounts(guides);
+		console.log(data && data.spawnz ? `heights: ${h.withZ} of ${plural(h.eligible, 'NPC or object goal')} got z (spawnz.json)` : 'heights: none (no spawnz.json in the reference data; `data build` writes it)');
 	}
 	return 0;
 }

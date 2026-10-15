@@ -12,6 +12,8 @@ const { validateGuides, validatePackFrames, forEachGoalMap } = require('./valida
 const { loadData } = require('./data');
 const { emitGuides, emitPack, emitToc, emitMapFrames, emitLicense } = require('./emit');
 const { ownsGuideId, GENERATED_MARKER } = require('../pack/format');
+const { heightCounts } = require('./heights');
+const { HEIGHTS_SOURCE } = require('../travel/cmangos');
 
 const { ROOT, DATA } = require('../paths');
 // Our own pack: guides/pack.json and the guides beside it.
@@ -155,13 +157,17 @@ function referencedFrames(guides, data) {
 // A pack's addon folder as { name: content }, deterministic: exactly
 // <folder>.toc, Pack.lua, MapFrames.lua, Guides.lua and LICENSE-DATA.txt,
 // plus LICENSE.txt holding `license` (the pack's LICENSE file) when given.
+// LICENSE-DATA.txt names meta.json's sources, and CMaNGOS classic-db when a
+// goal carries a height (heights.js) and meta.json does not name it already.
 function buildPackFiles({ guides, manifest, data, license = null }) {
+	const sources = (data.meta && Array.isArray(data.meta.sources) && data.meta.sources) || [];
+	const meta = heightCounts(guides).withZ && !sources.some((s) => s && s.name === HEIGHTS_SOURCE.name) ? { ...data.meta, sources: [...sources, HEIGHTS_SOURCE] } : data.meta;
 	const files = {
 		[`${manifest.folder}.toc`]: emitToc(manifest, coreInterface()),
 		'Pack.lua': emitPack(manifest),
 		'MapFrames.lua': emitMapFrames(referencedFrames(guides, data), manifest.id),
 		'Guides.lua': emitGuides(guides.map((g) => ({ guide: g, source: g._ast && g._ast.source ? g._ast.source : null }))),
-		'LICENSE-DATA.txt': emitLicense(data.meta),
+		'LICENSE-DATA.txt': emitLicense(meta),
 	};
 	if (license != null) files['LICENSE.txt'] = license;
 	return files;

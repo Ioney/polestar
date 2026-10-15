@@ -123,7 +123,9 @@ function collision(sub) {
 	return { verts, idx: Uint32Array.from(kept) };
 }
 
-// TrinityCore WMOGroup::GetLiquidTypeId.
+// TrinityCore WMOGroup::GetLiquidTypeId (src/tools/vmap4_extractor/wmo.cpp,
+// https://github.com/TrinityCore/TrinityCore; GPL-2.0-or-later, taken here
+// under GPL-3.0; THIRD_PARTY.md).
 function liquidTypeId(id, groupFlags) {
 	if (id > 0 && id < 21) {
 		switch ((id - 1) & 3) {

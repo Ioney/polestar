@@ -104,7 +104,7 @@ CI, they skip; everything else runs.
 | `addon/Polestar_Codex` | `codex build` | `lookup-codex.test.js` (release-safe, and Lookup, Dungeons and Rares read it in game) |
 | `data/forever/codex/*.json` | `codex build` | `dungeons-attune.test.js` (the real attunement chains) |
 | `addon/Polestar_ItemDB/Items.lua` | `itemdb build` (committed, so present on a clone) | `itemdb.test.js` |
-| `addon/Polestar_Nav` (Shortest Path Forever's router and walking maps) | `nav vendor <checkout>` (committed, so present on a clone) | `nav-vendor.test.js` (matches `UPSTREAM.json`; walks Goldshire to the Fargodeep Mine mouth on the real maps) |
+| `addon/Polestar_Nav` (Shortest Path Forever's router and walking maps) | `nav vendor <checkout>` (committed, so present on a clone) | `nav-vendor.test.js` (matches `UPSTREAM.json`; walks Goldshire to the Fargodeep Mine mouth on the real maps), `nav-e2e.test.js` (the arrow end to end on the real engine: Polestar's world frame against the engine's, the path through Walk, Travel and Nav.Sample; needs `data/forever/map-frames.json` and `addon/Polestar_Guides/MapFrames.lua` too) |
 | `data/local/crossings.json`, `addon/Polestar_Travel` | the local crossings file, `travel build` | `travel-crossings.test.js`, `nav-crossings.test.js` |
 | `data/local/nav/` (the navigation grid) | `nav build` | `navmesh-path.test.js` (real routes: the Frostmane Hold cave mouth, the Mesa Elevator, the South Gate tunnel) |
 | The Forever client's map tiles and WMO roots cached in `data/sources/casc` | `nav build` | `navmesh-geom.test.js` (WMO bounding boxes on their placements, real tiles) |

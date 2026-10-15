@@ -12,6 +12,8 @@ const H = { LEFT: 0, CENTER: 0.5, RIGHT: 1, TOPLEFT: 0, TOP: 0.5, TOPRIGHT: 1, B
 const V = { TOP: 0, CENTER: 0.5, BOTTOM: 1, TOPLEFT: 0, LEFT: 0.5, TOPRIGHT: 0, RIGHT: 0.5, BOTTOMLEFT: 1, BOTTOMRIGHT: 1 };
 const STRATA = { BACKGROUND: 0, LOW: 1, MEDIUM: 2, HIGH: 3, DIALOG: 4, FULLSCREEN: 5, FULLSCREEN_DIALOG: 6, TOOLTIP: 7 };
 const LAYER = { BACKGROUND: 0, BORDER: 1, ARTWORK: 2, OVERLAY: 3, HIGHLIGHT: 4 };
+// Regions draw inside their frame; a Line is one, with its own two ends.
+const isRegion = (o) => o.kind === 'Texture' || o.kind === 'FontString' || o.kind === 'Line';
 
 // ---------------------------------------------------------------------------
 // Textures
@@ -158,7 +160,7 @@ function resolve(objects, fonts) {
 	const scaleOf = (o) => {
 		if (effScale.has(o.id)) return effScale.get(o.id);
 		const p = o.parent != null ? byId.get(o.parent) : null;
-		const s = (o.kind === 'Texture' || o.kind === 'FontString' ? 1 : o.scale || 1) * (p ? scaleOf(p) : 1);
+		const s = (isRegion(o) ? 1 : o.scale || 1) * (p ? scaleOf(p) : 1);
 		effScale.set(o.id, s);
 		return s;
 	};
@@ -367,11 +369,11 @@ function svg(dump, { fonts, textures, roots, margin = 28, prefix = 'p', shared, 
 		return 2;
 	};
 
-	const frames = objects.filter((o) => o.kind !== 'Texture' && o.kind !== 'FontString' && findRoot(o) && visible(o));
+	const frames = objects.filter((o) => !isRegion(o) && findRoot(o) && visible(o));
 	frames.sort((a, b) => strataOf(a) - strataOf(b) || levelOf(a) - levelOf(b) || a.seq - b.seq);
 	const regionsOf = new Map();
 	for (const o of objects) {
-		if (o.kind !== 'Texture' && o.kind !== 'FontString') continue;
+		if (!isRegion(o)) continue;
 		if (!regionsOf.has(o.parent)) regionsOf.set(o.parent, []);
 		regionsOf.get(o.parent).push(o);
 	}
@@ -552,6 +554,42 @@ function svg(dump, { fonts, textures, roots, margin = 28, prefix = 'p', shared, 
 		body.push(turn && clip ? `<g${clip}>${img('')}</g>` : img(clip));
 	}
 
+	// A Line: a stroke `thickness` wide between its two ends, each a point of
+	// a frame plus an offset (the client's Line:SetStartPoint/SetEndPoint), in
+	// its colour, or its texture stretched along it (route breadcrumbs).
+	function drawLine(t, a) {
+		const L = t.line;
+		if (!L || !L.from || !L.to) return;
+		const s = scaleOf(t);
+		const end = (p) => {
+			const rel = byId.get(p.rel != null ? p.rel : t.parent);
+			const b = rel && rects.get(rel.id);
+			return b ? [b.x + b.w * (H[p.point] ?? 0) + p.x * s - ox, b.y + b.h * (V[p.point] ?? 0) - p.y * s - oy] : null;
+		};
+		const p1 = end(L.from), p2 = end(L.to);
+		if (!p1 || !p2) return;
+		const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+		const width = (L.thickness || 1) * s;
+		if (len <= 0 || width <= 0) return;
+		const clip = clipAttr(t);
+		const vc = t.vertexColor || [1, 1, 1, 1];
+		const c = t.color ? [t.color[0] * vc[0], t.color[1] * vc[1], t.color[2] * vc[2], (t.color[3] ?? 1) * (vc[3] ?? 1)] : vc;
+		const name = t.color ? 'white' : textureName(t.texture);
+		if (!name) return;
+		const op = Math.max(0, Math.min(1, (c[3] ?? 1) * a * (t.alpha ?? 1)));
+		if (op <= 0.001) return;
+		if (name === 'white') {
+			const { fill } = rgba(c, 1);
+			body.push(`<line x1="${f2(p1[0])}" y1="${f2(p1[1])}" x2="${f2(p2[0])}" y2="${f2(p2[1])}" stroke="${fill}" stroke-opacity="${f2(op)}" stroke-width="${f2(width)}"${clip}/>`);
+			return;
+		}
+		const uri = textures.uri(name, [c[0], c[1], c[2], 1], t.texCoord, t.desaturation || 0);
+		if (!uri) return;
+		const turn = `translate(${f2((p1[0] + p2[0]) / 2)} ${f2((p1[1] + p2[1]) / 2)}) rotate(${f2((Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) * 180) / Math.PI)})`;
+		const img = `<image x="${f2(-len / 2)}" y="${f2(-width / 2)}" width="${f2(len)}" height="${f2(width)}" preserveAspectRatio="none" opacity="${f2(op)}" href="${uri}" transform="${turn}"/>`;
+		body.push(clip ? `<g${clip}>${img}</g>` : img);
+	}
+
 	function drawText(t, a) {
 		if (!t.text || !t.lines) return;
 		const r = rects.get(t.id);
@@ -631,6 +669,7 @@ function svg(dump, { fonts, textures, roots, margin = 28, prefix = 'p', shared, 
 		for (const reg of regs) {
 			const ra = a;
 			if (reg.kind === 'Texture') drawTexture(reg, ra);
+			else if (reg.kind === 'Line') drawLine(reg, ra);
 			else drawText(reg, ra);
 		}
 	}

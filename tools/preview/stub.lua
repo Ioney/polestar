@@ -214,6 +214,14 @@ local function entry(o)
 		vertexColor = copy(o.vertexColor), texCoord = copy(o.texCoord), gradient = o.gradient, desaturation = o.desaturation,
 		rotation = o.rotation, blend = o.blend, vertexOffset = copy(o.vertexOffset),
 	}
+	-- A Line (CreateLine): its two ends, each relative to a point of a frame, and its thickness.
+	if o.kind == "Line" then
+		local function point(p)
+			if not p then return nil end
+			return { point = p[1], rel = idOf(relOf({ rel = p[2] }) or o.parent), x = p[3] or 0, y = p[4] or 0 }
+		end
+		e.line = { from = point(o.startPoint), to = point(o.endPoint), thickness = num(o.thickness) or 1 }
+	end
 	if o.kind == "FontString" then
 		e.text = o.text
 		e.font = o.font and { fontKey(o), o.font[2], o.font[3] or "" } or { preview.fallbackFont, 12, "" }
@@ -295,6 +303,10 @@ function preview.dump(opts)
 				for _, r in ipairs(f.regions) do
 					if r.shown ~= false then add(r) end
 				end
+				-- Lines are regions in the client; the test stub keeps them with the children.
+				for _, c in ipairs(f.children) do
+					if c.kind == "Line" and c.shown ~= false then add(c) end
+				end
 				local fs = typedText(f)
 				if fs then add(fs) end
 			end
@@ -304,6 +316,10 @@ function preview.dump(opts)
 			local o = queue[i]
 			i = i + 1
 			for _, p in ipairs(o.points) do add(relOf(p)) end
+			if o.kind == "Line" then
+				if o.startPoint then add(relOf({ rel = o.startPoint[2] })) end
+				if o.endPoint then add(relOf({ rel = o.endPoint[2] })) end
+			end
 			add(o.parent)
 			add(o.scrollChild)
 			add(o.thumbTexture)
@@ -314,6 +330,9 @@ function preview.dump(opts)
 	local function addFrame(f)
 		out[#out + 1] = entry(f)
 		for _, r in ipairs(f.regions) do out[#out + 1] = entry(r) end
+		for _, c in ipairs(f.children) do
+			if c.kind == "Line" then out[#out + 1] = entry(c) end
+		end
 		local fs = typedText(f)
 		if fs then out[#out + 1] = entry(fs) end
 	end

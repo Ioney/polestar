@@ -1,7 +1,9 @@
 'use strict';
 // One playground session: a long-lived Lua 5.1 process running the real
 // addons (Polestar, Polestar_Guides, and the data packs Polestar_QuestDB,
-// Polestar_ItemDB and Polestar_Codex loaded on demand when built) against the
+// Polestar_ItemDB and Polestar_Codex loaded on demand when built, and
+// Polestar_Nav, the walking engine, its maps decoded by
+// tests/lua/stub_encoding.lua) against the
 // test client stub, the stub world and the preview overlay, driven through
 // tools/play/driver.lua. Each interaction runs one Lua chunk, lets stub time
 // run, dumps the visible frames and draws them with tools/preview/render.js,
@@ -253,7 +255,8 @@ class Session {
 		const lines = [];
 		const dof = (f) => lines.push(`dofile(${luaString(f)})`);
 		lines.push(`package.path = ${luaString(STUBS + '/?.lua;')} .. package.path`);
-		for (const s of ['wow_stub.lua', 'stub_world.lua', ...packs.stubs]) dof(path.join(STUBS, s));
+		// stub_encoding.lua: C_EncodingUtil, which Polestar_Nav's packed walking maps are decoded with.
+		for (const s of ['wow_stub.lua', 'stub_world.lua', 'stub_encoding.lua', ...packs.stubs]) dof(path.join(STUBS, s));
 		lines.push('local w = stub.world', d.mapsLua);
 		if (this.artDir) {
 			const entries = Object.entries(this.art).map(([id, m]) => `[${id}] = ${luaValue(m)}`);
@@ -263,6 +266,10 @@ C_Map.GetMapArtLayerTextures = function(id) local m = ART[id]; return m and m.te
 C_Map.GetMapArtID = function(id) local m = ART[id]; return m and m.artID end`);
 		}
 		lines.push(packs.before);
+		// Polestar_Nav loads on demand, as in the client: Data.Pack loads it at login (Nav/Walk.lua).
+		if (fs.existsSync(path.join(ROOT, 'addon', 'Polestar_Nav', 'Polestar_Nav.toc'))) {
+			lines.push(`stub.packs.Polestar_Nav = { ${tocFiles('Polestar_Nav').map(luaString).join(', ')} }`);
+		}
 		lines.push(d.metrics);
 		dof(path.join(ROOT, 'tools', 'preview', 'stub.lua'));
 		lines.push('preview.enableTooltips()');

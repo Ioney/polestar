@@ -220,7 +220,7 @@ end
 
 local H = { LEFT = 0, CENTER = 0.5, RIGHT = 1, TOPLEFT = 0, TOP = 0.5, TOPRIGHT = 1, BOTTOMLEFT = 0, BOTTOM = 0.5, BOTTOMRIGHT = 1 }
 local V = { TOP = 0, CENTER = 0.5, BOTTOM = 1, TOPLEFT = 0, LEFT = 0.5, TOPRIGHT = 0, RIGHT = 0.5, BOTTOMLEFT = 1, BOTTOMRIGHT = 1 }
-local function isRegion(o) return o.kind == "Texture" or o.kind == "FontString" or o.kind == "MaskTexture" end
+local function isRegion(o) return o.kind == "Texture" or o.kind == "FontString" or o.kind == "MaskTexture" or o.kind == "Line" end
 local function num(v) return type(v) == "number" and v or nil end
 
 local function scaleOf(o)
